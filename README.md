@@ -6,7 +6,7 @@ A simple macOS menu bar app for sharing just the **left half** or **right half**
 
 Portion captures half of your display with ScreenCaptureKit and draws it live into a window named **“Portion”**. In your call you share that window instead of your whole screen, so people see only that half. You can switch halves from the menu bar at any time, and the call keeps sharing without a restart.
 
-The Portion window is hidden off-screen by default, so you never see it yourself. A red outline marks the area being shared. The outline is not included in the shared picture.
+The Portion window is hidden just off-screen by default, so you never see it yourself. When you start, it shows a blue **Portion** card instead of the live picture, so it's easy to spot in Zoom's or Meet's window picker. The card disappears as soon as you click **Share** in Zoom or in Meet (Chrome). Cancelling the picker leaves it up. In other apps it disappears after 60 seconds. A red outline marks the area being shared. The outline is not included in the shared picture.
 
 ## Using it
 
@@ -48,7 +48,7 @@ Run this once before your first build:
 Scripts/make-signing-cert.sh
 ```
 
-It creates a self-signed certificate called **Portion Local Signing** in your login keychain, and `build.sh` signs with it automatically. macOS may ask for your password to trust it. Every build then has the same identity, so macOS keeps the Screen Recording permission after you rebuild.
+It creates a self-signed certificate called **Portion Signing** in its own keychain (`~/Library/Keychains/portion-signing.keychain-db`). The keychain has a random password, saved in `~/Library/Application Support/Portion/`. `build.sh` uses it to unlock the keychain and sign automatically, so you never get a keychain password prompt. A separate keychain avoids the login keychain, whose password can stop matching your Mac password on managed Macs. Every build then has the same identity, so macOS keeps the Screen Recording permission after you rebuild.
 
 Without the certificate, `build.sh` falls back to an **ad-hoc** signature. macOS treats each ad-hoc build as a new app, so the permission is lost after every rebuild, even though the switch in Settings still looks on. To fix that, quit Portion, run `tccutil reset ScreenCapture app.portion.Portion`, then reopen Portion and allow it again.
 
@@ -63,6 +63,8 @@ Sources/Portion/
   AppDelegate.swift           Menu bar UI and sharing logic
   RegionCapture.swift         ScreenCaptureKit stream for the half-screen region
   MirrorWindow.swift          The "Portion" window that you share in calls
+  IntroCard.swift             Branded card shown in the Portion window when sharing starts
+  ShareDetector.swift         Notices when Zoom / Meet start sharing, to dismiss the card
   BorderOverlay.swift         Red outline around the shared area
 Resources/Info.plist          Bundle metadata (LSUIElement = menu bar only)
 Scripts/make-icon.swift       Generates the app icon

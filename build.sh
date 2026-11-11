@@ -42,12 +42,16 @@ fi
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Sign with a stable identity so macOS keeps the Screen Recording permission across
-# rebuilds. Order: $SIGN_IDENTITY if set, then the local certificate from
+# rebuilds. Order: $SIGN_IDENTITY if set, then the dedicated keychain made by
 # Scripts/make-signing-cert.sh, then ad-hoc as a last resort.
-LOCAL_IDENTITY="Portion Local Signing"
+SIGN_KEYCHAIN="$HOME/Library/Keychains/portion-signing.keychain-db"
+SIGN_PASS_FILE="$HOME/Library/Application Support/Portion/signing-keychain-password"
+keychain_args=()
 if [ -z "${SIGN_IDENTITY:-}" ]; then
-  if security find-identity -v -p codesigning | grep -q "\"$LOCAL_IDENTITY\""; then
-    SIGN_IDENTITY="$LOCAL_IDENTITY"
+  if [ -f "$SIGN_KEYCHAIN" ] && [ -f "$SIGN_PASS_FILE" ]; then
+    security unlock-keychain -p "$(cat "$SIGN_PASS_FILE")" "$SIGN_KEYCHAIN"
+    SIGN_IDENTITY="Portion Signing"
+    keychain_args=(--keychain "$SIGN_KEYCHAIN")
   else
     SIGN_IDENTITY="-"
     echo "!! No signing certificate found; signing ad-hoc." >&2
@@ -56,7 +60,8 @@ if [ -z "${SIGN_IDENTITY:-}" ]; then
   fi
 fi
 echo "==> Signing ($SIGN_IDENTITY)"
-codesign --force --options runtime --timestamp=none --sign "$SIGN_IDENTITY" "$APP"
+codesign --force --options runtime --timestamp=none ${keychain_args[@]+"${keychain_args[@]}"} \
+  --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --verbose "$APP"
 
 # --- Package the DMG ---------------------------------------------------------
