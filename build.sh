@@ -41,9 +41,22 @@ if [ ! -f Resources/AppIcon.icns ]; then
 fi
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-# Ad-hoc signature (no Apple Developer account needed). Set SIGN_IDENTITY to use a real one.
-echo "==> Signing"
-codesign --force --options runtime --timestamp=none --sign "${SIGN_IDENTITY:--}" "$APP"
+# Sign with a stable identity so macOS keeps the Screen Recording permission across
+# rebuilds. Order: $SIGN_IDENTITY if set, then the local certificate from
+# Scripts/make-signing-cert.sh, then ad-hoc as a last resort.
+LOCAL_IDENTITY="Portion Local Signing"
+if [ -z "${SIGN_IDENTITY:-}" ]; then
+  if security find-identity -v -p codesigning | grep -q "\"$LOCAL_IDENTITY\""; then
+    SIGN_IDENTITY="$LOCAL_IDENTITY"
+  else
+    SIGN_IDENTITY="-"
+    echo "!! No signing certificate found; signing ad-hoc." >&2
+    echo "!! macOS will forget the Screen Recording permission after each rebuild." >&2
+    echo "!! Run Scripts/make-signing-cert.sh once to fix that." >&2
+  fi
+fi
+echo "==> Signing ($SIGN_IDENTITY)"
+codesign --force --options runtime --timestamp=none --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --verbose "$APP"
 
 # --- Package the DMG ---------------------------------------------------------

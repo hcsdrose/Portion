@@ -42,10 +42,17 @@ Open the DMG and drag **Portion** into **Applications**.
 
 ### Signing notes
 
-The app is **ad-hoc signed**, which is fine on the Mac that built it.
+Run this once before your first build:
 
-- **Copying the DMG to another Mac:** Gatekeeper will block the first launch. Right-click Portion → **Open**, or run `xattr -dr com.apple.quarantine /Applications/Portion.app`. To distribute it properly, build with `SIGN_IDENTITY="Developer ID Application: …" ./build.sh`, then notarize it.
-- **After a rebuild:** macOS may forget the Screen Recording permission. Toggle Portion off and on again in that settings pane.
+```bash
+Scripts/make-signing-cert.sh
+```
+
+It creates a self-signed certificate called **Portion Local Signing** in your login keychain, and `build.sh` signs with it automatically. macOS may ask for your password to trust it. Every build then has the same identity, so macOS keeps the Screen Recording permission after you rebuild.
+
+Without the certificate, `build.sh` falls back to an **ad-hoc** signature. macOS treats each ad-hoc build as a new app, so the permission is lost after every rebuild, even though the switch in Settings still looks on. To fix that, quit Portion, run `tccutil reset ScreenCapture app.portion.Portion`, then reopen Portion and allow it again.
+
+- **Copying the DMG to another Mac:** Gatekeeper will block the first launch, because the certificate is only trusted on your Mac. Right-click Portion → **Open**, or run `xattr -dr com.apple.quarantine /Applications/Portion.app`. To distribute it properly, build with `SIGN_IDENTITY="Developer ID Application: …" ./build.sh`, then notarize it.
 
 ## Project layout
 
@@ -59,5 +66,6 @@ Sources/Portion/
   BorderOverlay.swift         Red outline around the shared area
 Resources/Info.plist          Bundle metadata (LSUIElement = menu bar only)
 Scripts/make-icon.swift       Generates the app icon
+Scripts/make-signing-cert.sh  One-time setup: local code-signing certificate
 build.sh                      Builds .app, signs it, and packages the .dmg
 ```
