@@ -15,11 +15,14 @@ final class MirrorWindowController {
     private var window: NSWindow?
     private let imageLayer = CALayer()
 
+    private var placement: MirrorPlacement = .offscreen
+
     var isVisible: Bool { window?.isVisible ?? false }
 
     func show(regionSize: NSSize, sharedRegion: NSRect, on screen: NSScreen, placement: MirrorPlacement) {
         let window = self.window ?? makeWindow()
         self.window = window
+        self.placement = placement
 
         let frame: NSRect
         switch placement {
@@ -57,6 +60,13 @@ final class MirrorWindowController {
     func hide() {
         window?.orderOut(nil)
         imageLayer.contents = nil
+    }
+
+    /// Activating Portion (e.g. to show an alert) raises its windows. In the
+    /// "behind windows" placement that would cover the user's apps, so push it back.
+    func sendToBack() {
+        guard placement == .behindWindows, let window, window.isVisible else { return }
+        window.orderBack(nil)
     }
 
     private func makeWindow() -> NSWindow {

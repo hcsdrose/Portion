@@ -14,12 +14,13 @@ enum PortionError: LocalizedError {
 
 /// Captures a rectangle of a display with ScreenCaptureKit and hands each new frame
 /// (as an IOSurface) to `onFrame` on the main thread.
+@MainActor
 final class RegionCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     var onFrame: ((IOSurface) -> Void)?
     var onError: ((Error) -> Void)?
 
     private var stream: SCStream?
-    private let queue = DispatchQueue(label: "portion.capture", qos: .userInteractive)
+    private nonisolated let queue = DispatchQueue(label: "portion.capture", qos: .userInteractive)
 
     var isRunning: Bool { stream != nil }
 
@@ -48,6 +49,8 @@ final class RegionCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.colorSpaceName = CGColorSpace.sRGB
         config.showsCursor = true
+        // The mirror keeps showing the latest frame's surface after we receive it, so leave
+        // headroom in the pool; a tighter queue risks a displayed surface being overwritten.
         config.queueDepth = 6
 
         if let stream {
@@ -70,7 +73,8 @@ final class RegionCapture: NSObject, SCStreamOutput, SCStreamDelegate {
 
     // MARK: SCStreamOutput
 
-    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+    nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+                            of type: SCStreamOutputType) {
         guard type == .screen, sampleBuffer.isValid,
               let attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, createIfNecessary: false)
                 as? [[SCStreamFrameInfo: Any]],
@@ -80,15 +84,15 @@ final class RegionCapture: NSObject, SCStreamOutput, SCStreamDelegate {
               let surface = CVPixelBufferGetIOSurface(pixelBuffer)?.takeUnretainedValue()
         else { return }
 
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.onFrame?(surface)
         }
     }
 
     // MARK: SCStreamDelegate
 
-    func stream(_ stream: SCStream, didStopWithError error: Error) {
-        DispatchQueue.main.async { [weak self] in
+    nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
+        Task { @MainActor [weak self] in
             guard let self, self.stream === stream else { return }
             self.stream = nil
             self.onError?(error)

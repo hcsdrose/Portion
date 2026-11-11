@@ -1,4 +1,5 @@
 import AppKit
+import ScreenCaptureKit
 import ServiceManagement
 
 enum Side: String {
@@ -7,15 +8,26 @@ enum Side: String {
     var title: String { self == .left ? "Left Half" : "Right Half" }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let capture = RegionCapture()
     private let mirror = MirrorWindowController()
     private let border = BorderOverlay()
 
+    /// The half being shared. Stays set while reconnecting after an interruption.
     private var activeSide: Side?
-    private var activeDisplayID: CGDirectDisplayID?
-    private var isStarting = false
+    /// The shared area in AppKit coordinates, used to redraw the outline.
+    private var activeRegion: NSRect?
+    private var pendingStarts = 0
+    private var isRecovering = false
+    private var screensAsleep = false
+    private var sessionInactive = false
+
+    /// Start/stop requests run one after another so they can never overlap.
+    private var lastOperation: Task<Void, Never>?
+
+    private static let maxRecoveryAttempts = 3
 
     private let defaults = UserDefaults.standard
 
@@ -48,8 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.mirror.display(surface)
         }
         capture.onError = { [weak self] error in
-            self?.tearDown()
-            self?.showAlert(title: "Sharing stopped", message: error.localizedDescription)
+            self?.handleStreamError(error)
         }
 
         NotificationCenter.default.addObserver(
@@ -57,10 +68,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name: NSApplication.didChangeScreenParametersNotification, object: nil
         )
 
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(self, selector: #selector(screensDidSleep),
+                              name: NSWorkspace.screensDidSleepNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(screensDidWake),
+                              name: NSWorkspace.screensDidWakeNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(sessionDidResignActive),
+                              name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
+        workspace.addObserver(self, selector: #selector(sessionDidBecomeActive),
+                              name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+
         if !CGPreflightScreenCaptureAccess() {
             // Triggers the system prompt on first launch.
             CGRequestScreenCaptureAccess()
         }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        mirror.sendToBack()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -88,7 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(item)
         }
 
-        let stop = NSMenuItem(title: "Stop Sharing", action: activeSide == nil ? nil : #selector(stopSharing), keyEquivalent: "")
+        let canStop = activeSide != nil || pendingStarts > 0
+        let stop = NSMenuItem(title: "Stop Sharing", action: canStop ? #selector(stopSharing) : nil, keyEquivalent: "")
         stop.target = self
         menu.addItem(stop)
         menu.addItem(.separator())
@@ -141,8 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var statusText: String {
-        if isStarting { return "Starting…" }
+        if pendingStarts > 0 { return "Starting…" }
         guard let side = activeSide else { return "Not sharing" }
+        if isRecovering { return "Reconnecting \(side.title.lowercased())…" }
         return "Sharing \(side.title.lowercased()) → share the “\(MirrorWindowController.windowTitle)” window"
     }
 
@@ -156,7 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Portion")
         image?.isTemplate = true
         statusItem.button?.image = image
-        statusItem.button?.toolTip = activeSide == nil ? "Portion" : "Portion – sharing \(activeSide!.title.lowercased())"
+        statusItem.button?.toolTip = activeSide.map { "Portion – sharing \($0.title.lowercased())" } ?? "Portion"
     }
 
     // MARK: Actions
@@ -167,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func stopSharing() {
-        tearDown()
+        enqueue { [weak self] in await self?.endSharing() }
     }
 
     @objc private func chooseDisplay(_ sender: NSMenuItem) {
@@ -178,7 +205,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleBorder() {
         showBorder.toggle()
-        if let side = activeSide { startSharing(side) }
+        // The outline is never captured, so there's no need to touch the stream.
+        if showBorder, let region = activeRegion { border.show(around: region) } else { border.hide() }
     }
 
     @objc private func choosePlacement(_ sender: NSMenuItem) {
@@ -195,13 +223,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            showAlert(title: "Couldn’t change Launch at Login",
-                      message: "\(error.localizedDescription)\n\nMake sure Portion is in your Applications folder.")
+            presentAlert(title: "Couldn’t change Launch at Login",
+                         message: "\(error.localizedDescription)\n\nMake sure Portion is in your Applications folder.")
         }
     }
 
     @objc private func showHelp() {
-        showAlert(title: "Sharing half your screen", message: """
+        presentAlert(title: "Sharing half your screen", message: """
         1. Choose “Share Left Half” or “Share Right Half” from the Portion menu bar icon.
         2. In Zoom: click Share Screen and pick the window named “Portion”.
            In Google Meet (Chrome): click Present → A window, and pick “Portion”.
@@ -216,11 +244,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startSharing(side)
     }
 
+    @objc private func screensDidSleep() { screensAsleep = true }
+    @objc private func sessionDidResignActive() { sessionInactive = true }
+
+    @objc private func screensDidWake() {
+        screensAsleep = false
+        resumeIfInterrupted()
+    }
+
+    @objc private func sessionDidBecomeActive() {
+        sessionInactive = false
+        resumeIfInterrupted()
+    }
+
     // MARK: Sharing
 
-    private func startSharing(_ side: Side) {
-        guard ensurePermission(), !isStarting else { return }
+    private func enqueue(_ operation: @escaping @MainActor () async -> Void) {
+        let previous = lastOperation
+        lastOperation = Task { @MainActor in
+            await previous?.value
+            await operation()
+        }
+    }
 
+    private func startSharing(_ side: Side) {
+        guard ensurePermission() else { return }
+        pendingStarts += 1
+        enqueue { [weak self] in
+            guard let self else { return }
+            defer { self.pendingStarts -= 1 }
+            do {
+                try await self.beginCapture(side)
+            } catch {
+                await self.endSharing()
+                self.presentAlert(title: "Couldn’t start sharing", message: """
+                \(error.localizedDescription)
+
+                Make sure Portion is allowed under System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Portion.
+                """)
+            }
+        }
+    }
+
+    /// Positions our windows and starts (or retargets) the capture stream.
+    private func beginCapture(_ side: Side) async throws {
         let screen = targetScreen()
         let frame = screen.frame
         let leftWidth = floor(frame.width / 2)
@@ -232,38 +299,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // AppKit (bottom-left origin, global coordinates) for our own windows.
         let cocoaRect = NSRect(x: frame.minX + xOffset, y: frame.minY, width: width, height: frame.height)
 
-        // Show our windows first so the capture filter can exclude them.
         if showBorder { border.show(around: cocoaRect) } else { border.hide() }
         mirror.show(regionSize: cocoaRect.size, sharedRegion: cocoaRect, on: screen, placement: placement)
 
-        isStarting = true
-        Task { @MainActor in
-            defer { self.isStarting = false }
-            do {
-                try await self.capture.start(displayID: screen.displayID, sourceRect: sourceRect,
-                                             scale: screen.backingScaleFactor)
-                self.activeSide = side
-                self.activeDisplayID = screen.displayID
-                self.updateStatusIcon()
-            } catch {
-                self.tearDown()
-                self.showAlert(title: "Couldn’t start sharing", message: """
-                \(error.localizedDescription)
+        try await capture.start(displayID: screen.displayID, sourceRect: sourceRect,
+                                scale: screen.backingScaleFactor)
+        activeSide = side
+        activeRegion = cocoaRect
+        isRecovering = false
+        updateStatusIcon()
+    }
 
-                Make sure Portion is allowed under System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Portion.
-                """)
+    private func endSharing() async {
+        activeSide = nil
+        activeRegion = nil
+        isRecovering = false
+        border.hide()
+        mirror.hide()
+        updateStatusIcon()
+        await capture.stop()
+    }
+
+    // MARK: Recovery
+
+    private func handleStreamError(_ error: Error) {
+        guard activeSide != nil else { return }
+        // The user ended capture from the system's screen-recording indicator: respect that.
+        if (error as? SCStreamError)?.code == .userStopped {
+            enqueue { [weak self] in await self?.endSharing() }
+            return
+        }
+        scheduleRecovery(attempt: 1)
+    }
+
+    /// Tries to restart a stream that stopped on its own (sleep, lock, display change…),
+    /// keeping the same mirror window so the call doesn't need to re-share.
+    private func scheduleRecovery(attempt: Int) {
+        guard let side = activeSide else { return }
+        isRecovering = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+            self?.enqueue { [weak self] in await self?.recover(side, attempt: attempt) }
+        }
+    }
+
+    private func recover(_ side: Side, attempt: Int) async {
+        // Someone stopped or switched sides meanwhile, or another restart already worked.
+        guard activeSide == side, !capture.isRunning else { return }
+        do {
+            try await beginCapture(side)
+        } catch {
+            if screensAsleep || sessionInactive {
+                return // Try again when the screen wakes or the user logs back in.
+            }
+            if attempt < Self.maxRecoveryAttempts {
+                scheduleRecovery(attempt: attempt + 1)
+            } else {
+                await endSharing()
+                presentAlert(title: "Sharing stopped", message: error.localizedDescription)
             }
         }
     }
 
-    private func tearDown() {
-        activeSide = nil
-        activeDisplayID = nil
-        border.hide()
-        mirror.hide()
-        updateStatusIcon()
-        Task { await capture.stop() }
+    private func resumeIfInterrupted() {
+        guard activeSide != nil, !capture.isRunning else { return }
+        scheduleRecovery(attempt: 1)
     }
+
+    // MARK: Helpers
 
     private func targetScreen() -> NSScreen {
         if let id = preferredDisplayID, let screen = NSScreen.screens.first(where: { $0.displayID == id }) {
@@ -275,7 +378,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func ensurePermission() -> Bool {
         if CGPreflightScreenCaptureAccess() { return true }
         CGRequestScreenCaptureAccess()
-        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Screen Recording permission needed"
         alert.informativeText = """
@@ -285,19 +387,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         """
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn,
+        if runModal(alert) == .alertFirstButtonReturn,
            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
             NSWorkspace.shared.open(url)
         }
         return false
     }
 
-    private func showAlert(title: String, message: String) {
+    /// Shows an alert on the next run-loop turn, so a pending start/stop is never
+    /// held up waiting for the user to dismiss it.
+    private func presentAlert(title: String, message: String) {
+        DispatchQueue.main.async { [weak self] in
+            let alert = NSAlert()
+            alert.messageText = title
+            alert.informativeText = message
+            _ = self?.runModal(alert)
+        }
+    }
+
+    @discardableResult
+    private func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
+        mirror.sendToBack()
+        let response = alert.runModal()
+        mirror.sendToBack()
+        return response
     }
 }
 
