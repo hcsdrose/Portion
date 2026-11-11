@@ -1,73 +1,108 @@
 # Portion
 
-A simple macOS menu bar app for sharing just the **left half** or **right half** of your screen in Zoom, Google Meet, or any app that can share a single window.
+**Share just half of your screen in Zoom, Google Meet, and other video calls.**
 
-## How it works
+Show people your slides, document, or demo, and keep your email, chat, and notes on the other half to yourself.
 
-Portion captures half of your display with ScreenCaptureKit and draws it live into a window named **“Portion”**. In your call you share that window instead of your whole screen, so people see only that half. You can switch halves from the menu bar at any time, and the call keeps sharing without a restart.
+<p align="center">
+  <img src="docs/images/how-it-works.png" alt="Your screen has a red outline around the left half. The call shows only that half." width="800">
+</p>
 
-The Portion window is hidden just off-screen by default, so you never see it yourself. When you start, it shows a blue **Portion** card instead of the live picture, so it's easy to spot in Zoom's or Meet's window picker. The card disappears as soon as you click **Share** in Zoom or in Meet (Chrome). Cancelling the picker leaves it up. In other apps it disappears after 60 seconds. A red outline marks the area being shared. The outline is not included in the shared picture.
+---
 
-## Using it
+## Install
 
-1. Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half**.
-2. Share the Portion window in your call:
-   - **Zoom:** Share Screen → pick the **Portion** window.
-   - **Google Meet (Chrome):** Present now → **A window** → **Portion**.
-3. To stop, choose **Stop Sharing** in Portion, and stop presenting in your call.
+1. Open the **Portion .dmg** file.
+2. Drag **Portion** into your **Applications** folder.
+3. Open Portion from Applications. A small icon appears in your menu bar at the top of the screen. Portion has no regular window. It lives up there.
 
-Menu options:
+> **"Portion can't be opened"?** Right-click Portion in Applications, choose **Open**, then click **Open** again. You only need to do this once.
 
-- **Display:** shown only when more than one monitor is connected. Picks which screen to split.
-- **Outline Shared Area:** shows or hides the red outline.
-- **Portion Window Placement:** if the Portion window doesn't appear in a share picker, choose **On Other Half, Behind Windows**. This keeps the window on-screen, behind your other windows, on the half you are *not* sharing.
-- **Launch at Login**
+### Give Portion permission to see your screen
 
-### First run: Screen Recording permission
+The first time you use Portion, your Mac asks for permission to record your screen. Portion needs this to copy half of your screen into your call.
 
-macOS will ask for permission to record your screen. Turn on **Portion** in **System Settings → Privacy & Security → Screen & System Audio Recording**, then quit and reopen Portion.
+1. Click **Open System Settings** when asked. If you missed the prompt, open **System Settings → Privacy & Security → Screen & System Audio Recording**.
+2. Turn on **Portion**.
+3. **Quit Portion and open it again.** It only notices the new permission after a restart.
 
-Zoom and Chrome also need this permission to share windows.
+Zoom and Chrome need the same permission to share windows. If you've shared your screen in them before, they already have it.
 
-## Building the DMG
+---
 
-You need the Xcode Command Line Tools (`xcode-select --install`). Full Xcode is not required.
+## Share half your screen
 
-```bash
-./build.sh                  # → dist/Portion-1.0.0.dmg (universal: Apple Silicon + Intel)
-VERSION=1.1.0 ./build.sh    # set the version
-```
+<p align="center">
+  <img src="docs/images/three-steps.png" alt="Step 1: choose Share Left Half from the Portion menu. Step 2: choose the Portion window in Zoom or Meet. Step 3: click Share." width="800">
+</p>
 
-Open the DMG and drag **Portion** into **Applications**.
+**1. Pick a half.** Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half**. A red outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
 
-### Signing notes
+**2. Share the "Portion" window in your call.**
 
-Run this once before your first build:
+| App | What to click |
+| --- | --- |
+| **Google Meet** (Chrome) | **Present now** → **A window** tab → **Portion** → **Share** |
+| **Zoom** | **Share Screen** → **Portion** → **Share** |
+| **Other apps** | Choose to share a *window* (not your entire screen) and pick **Portion** |
 
-```bash
-Scripts/make-signing-cert.sh
-```
+**3. That's it.** Anything you put on that half of your screen is now visible in the call.
 
-It creates a self-signed certificate called **Portion Signing** in its own keychain (`~/Library/Keychains/portion-signing.keychain-db`). The keychain has a random password, saved in `~/Library/Application Support/Portion/`. `build.sh` uses it to unlock the keychain and sign automatically, so you never get a keychain password prompt. A separate keychain avoids the login keychain, whose password can stop matching your Mac password on managed Macs. Every build then has the same identity, so macOS keeps the Screen Recording permission after you rebuild.
+### Look for the blue card
 
-Without the certificate, `build.sh` falls back to an **ad-hoc** signature. macOS treats each ad-hoc build as a new app, so the permission is lost after every rebuild, even though the switch in Settings still looks on. To fix that, quit Portion, run `tccutil reset ScreenCapture app.portion.Portion`, then reopen Portion and allow it again.
+In the list of windows, Portion shows up as this card, so you can find it right away:
 
-- **Copying the DMG to another Mac:** Gatekeeper will block the first launch, because the certificate is only trusted on your Mac. Right-click Portion → **Open**, or run `xattr -dr com.apple.quarantine /Applications/Portion.app`. To distribute it properly, build with `SIGN_IDENTITY="Developer ID Application: …" ./build.sh`, then notarize it.
+<p align="center">
+  <img src="docs/images/portion-card.png" alt="A blue Portion card that says Sharing left half" width="320">
+</p>
 
-## Project layout
+In Meet and Zoom, the card disappears as soon as you click **Share**, and your screen appears in its place. If you click **Cancel** instead, the card stays up for your next try. In other apps, it disappears on its own after a minute.
 
-```
-Package.swift                 Swift package (macOS 13+)
-Sources/Portion/
-  main.swift                  App entry (menu-bar-only app)
-  AppDelegate.swift           Menu bar UI and sharing logic
-  RegionCapture.swift         ScreenCaptureKit stream for the half-screen region
-  MirrorWindow.swift          The "Portion" window that you share in calls
-  IntroCard.swift             Branded card shown in the Portion window when sharing starts
-  ShareDetector.swift         Notices when Zoom / Meet start sharing, to dismiss the card
-  BorderOverlay.swift         Red outline around the shared area
-Resources/Info.plist          Bundle metadata (LSUIElement = menu bar only)
-Scripts/make-icon.swift       Generates the app icon
-Scripts/make-signing-cert.sh  One-time setup: local code-signing certificate
-build.sh                      Builds .app, signs it, and packages the .dmg
-```
+### Switch halves during a call
+
+Pick the other half from the Portion menu at any time. The call keeps going, and you don't need to share again.
+
+### Stop sharing
+
+Stop presenting in your call as usual, then choose **Stop Sharing** in the Portion menu.
+
+---
+
+## The Portion menu
+
+<p align="center">
+  <img src="docs/images/menu.png" alt="The Portion menu" width="400">
+</p>
+
+| Option | What it does |
+| --- | --- |
+| **Share Left Half / Share Right Half** | Starts sharing that half, or switches to it. |
+| **Stop Sharing** | Stops Portion. |
+| **Display** | Appears only if you have more than one monitor. Picks which screen to split. |
+| **Outline Shared Area** | Shows or hides the red outline. |
+| **Portion Window Placement** | Try **On Other Half, Behind Windows** if Portion is missing from your call app's list (see below). |
+| **How to Share in Zoom / Meet…** | A quick reminder of the steps. |
+| **Launch at Login** | Starts Portion automatically when you log in. |
+
+---
+
+## Troubleshooting
+
+**Portion keeps saying it needs Screen Recording permission, even though it's turned on.**
+Quit Portion and open it again. If that doesn't help, select **Portion** in **System Settings → Privacy & Security → Screen & System Audio Recording**, remove it with the **–** button, then open Portion and allow it again.
+
+**I don't see Portion in Zoom's or Meet's list of windows.**
+Make sure you chose **Share Left Half** or **Share Right Half** *first*. The Portion window only exists while Portion is sharing. If the list was already open, close it and open it again. If it's still missing, open the Portion menu → **Portion Window Placement** → **On Other Half, Behind Windows**.
+
+**People in the call see the blue card instead of my screen.**
+The card goes away as soon as Meet or Zoom starts sharing. In other apps, it can take up to a minute to disappear on its own.
+
+**Will people see my notifications, email, or other windows?**
+Only if they're on the half you're sharing. Anything on the other half, or on another monitor, stays private.
+
+**Does the call see my mouse pointer?**
+Yes, when it's over the shared half.
+
+---
+
+<sub>Building Portion from source? See [BUILDING.md](BUILDING.md).</sub>
