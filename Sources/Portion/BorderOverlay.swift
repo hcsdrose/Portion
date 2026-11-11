@@ -34,10 +34,11 @@ final class BorderOverlay {
 
 private final class BorderView: NSView {
     override func draw(_ dirtyRect: NSRect) {
-        let lineWidth: CGFloat = 4
-        let path = NSBezierPath(rect: bounds.insetBy(dx: lineWidth / 2, dy: lineWidth / 2))
-        path.lineWidth = lineWidth
-        NSColor.systemRed.withAlphaComponent(0.85).setStroke()
-        path.stroke()
+        // The brand's purple-to-pink gradient, so the shared area is unmistakable.
+        let lineWidth: CGFloat = 5
+        let ring = NSBezierPath(rect: bounds)
+        ring.append(NSBezierPath(rect: bounds.insetBy(dx: lineWidth, dy: lineWidth)))
+        ring.windingRule = .evenOdd
+        NSGradient(starting: Brand.purple, ending: Brand.pink)?.draw(in: ring, angle: -30)
     }
 }

@@ -40,6 +40,7 @@ if [ ! -f Resources/AppIcon.icns ]; then
   iconutil -c icns "$ICONSET" -o Resources/AppIcon.icns
 fi
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp -R Resources/Fonts "$APP/Contents/Resources/Fonts"   # Rubik (SIL Open Font License)
 
 # Sign with a stable identity so macOS keeps the Screen Recording permission across
 # rebuilds. Order: $SIGN_IDENTITY if set, then the dedicated keychain made by

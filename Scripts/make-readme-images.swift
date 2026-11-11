@@ -1,7 +1,8 @@
-// Draws the illustrations used in README.md into docs/images/.
+// Draws the illustrations used in README.md into docs/images/, in the christopherrose.com
+// style (see Sources/Portion/Brand.swift).
 // Usage (from the repo root):
 //   swiftc -parse-as-library Scripts/make-readme-images.swift Sources/Portion/IntroCard.swift \
-//     -o /tmp/make-readme-images && /tmp/make-readme-images
+//     Sources/Portion/Brand.swift -o /tmp/make-readme-images && /tmp/make-readme-images
 import AppKit
 
 // Stand-ins for the app types IntroCard.swift refers to.
@@ -17,14 +18,13 @@ extension NSColor {
     }
 }
 
-let brandBlue = NSColor(srgbRed: 0.20, green: 0.45, blue: 0.98, alpha: 1)
-let brandPurple = NSColor(srgbRed: 0.38, green: 0.22, blue: 0.85, alpha: 1)
-let canvasBG = NSColor(hex: 0xF4F5FA)
-let ink = NSColor(hex: 0x1D1D1F)
-let inkSoft = NSColor(hex: 0x6E6E73)
-let line = NSColor(hex: 0xD9DBE3)
-let outlineRed = NSColor(hex: 0xFF3B30)
-let bezel = NSColor(hex: 0x2B2D33)
+let canvasBG = NSColor.white
+let canvasBorder = NSColor(hex: 0xE5E4E7)
+let ink = Brand.ink
+let inkSoft = Brand.inkSoft
+let eyebrow = Brand.label
+let line = NSColor(hex: 0xE5E4E7)
+let bezel = NSColor(hex: 0x16171D)
 let callBG = NSColor(hex: 0x202124)
 
 // MARK: Drawing helpers (top-left origin)
@@ -60,9 +60,40 @@ func stroke(_ rect: NSRect, _ color: NSColor, width: CGFloat, radius: CGFloat = 
     path.stroke()
 }
 
-func gradient(_ rect: NSRect, radius: CGFloat, angle: CGFloat = -45) {
-    NSGradient(starting: brandBlue, ending: brandPurple)!
-        .draw(in: NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius), angle: angle)
+/// The brand gradient (#aa3bff → #ff3bac). Coordinates are flipped, so a positive angle
+/// runs towards the lower right, like the site's 120° CSS gradient.
+func gradient(_ rect: NSRect, radius: CGFloat, angle: CGFloat = 30) {
+    gradient(NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius), angle: angle)
+}
+
+func gradient(_ path: NSBezierPath, angle: CGFloat = 30) {
+    NSGradient(starting: Brand.purple, ending: Brand.pink)!.draw(in: path, angle: angle)
+}
+
+/// A white canvas with the site's hairline border.
+func canvas(_ w: CGFloat, _ h: CGFloat) {
+    let r = NSRect(x: 0.5, y: 0.5, width: w - 1, height: h - 1)
+    fill(r, canvasBG, radius: 28)
+    stroke(r, canvasBorder, width: 1, radius: 28)
+}
+
+/// A pill "chip" like the ones on christopherrose.com: gradient, solid black, or outlined.
+enum ChipStyle { case accent, filled, outlined }
+
+func chip(_ title: String, center: NSPoint, style: ChipStyle, size: CGFloat = 15) {
+    let font = Brand.font(size, weight: 700)
+    let str = NSAttributedString(string: title, attributes: [.font: font, .kern: size * 0.03])
+    let w = str.size().width + size * 2.1, h = size * 2.1
+    let r = NSRect(x: center.x - w / 2, y: center.y - h / 2, width: w, height: h)
+    switch style {
+    case .accent: gradient(r, radius: h / 2)
+    case .filled: fill(r, ink, radius: h / 2)
+    case .outlined:
+        fill(r, .white, radius: h / 2)
+        stroke(r.insetBy(dx: 1, dy: 1), ink, width: 2, radius: h / 2 - 1)
+    }
+    text(title, at: NSPoint(x: center.x, y: r.minY + (h - size * 1.2) / 2), size: size, weight: 700,
+         color: style == .outlined ? ink : .white, align: .center, kern: size * 0.03)
 }
 
 func shadowed(blur: CGFloat = 24, y: CGFloat = 8, alpha: CGFloat = 0.18, _ draw: () -> Void) {
@@ -79,12 +110,12 @@ func shadowed(blur: CGFloat = 24, y: CGFloat = 8, alpha: CGFloat = 0.18, _ draw:
 enum Align { case left, center, right }
 
 @discardableResult
-func text(_ string: String, at point: NSPoint, size: CGFloat, weight: NSFont.Weight = .regular,
-          color: NSColor = ink, align: Align = .left, width: CGFloat? = nil) -> NSSize {
+func text(_ string: String, at point: NSPoint, size: CGFloat, weight: CGFloat = 400,
+          color: NSColor = ink, align: Align = .left, width: CGFloat? = nil, kern: CGFloat = 0) -> NSSize {
     let style = NSMutableParagraphStyle()
     style.alignment = align == .left ? .left : align == .center ? .center : .right
     let attrs: [NSAttributedString.Key: Any] = [
-        .font: NSFont.systemFont(ofSize: size, weight: weight), .foregroundColor: color, .paragraphStyle: style,
+        .font: Brand.font(size, weight: weight), .foregroundColor: color, .paragraphStyle: style, .kern: kern,
     ]
     let str = NSAttributedString(string: string, attributes: attrs)
     let measured = str.size()
@@ -110,9 +141,9 @@ func symbol(_ name: String, in rect: NSRect, color: NSColor, weight: NSFont.Weig
 
 func circleBadge(_ n: Int, center: NSPoint, radius: CGFloat) {
     let rect = NSRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-    NSGradient(starting: brandBlue, ending: brandPurple)!.draw(in: NSBezierPath(ovalIn: rect), angle: -45)
+    gradient(NSBezierPath(ovalIn: rect))
     let size = radius * 1.1
-    text("\(n)", at: NSPoint(x: center.x, y: center.y - size * 0.62), size: size, weight: .bold, color: .white, align: .center)
+    text("\(n)", at: NSPoint(x: center.x, y: center.y - size * 0.62), size: size, weight: 700, color: .white, align: .center)
 }
 
 // MARK: Pieces of fake UI
@@ -137,8 +168,7 @@ func drawDocument(in r: NSRect) {
     for (i, h) in bars.enumerated() {
         let bh = chart.height * h
         let bar = NSRect(x: chart.minX + CGFloat(i) * (bw + gap), y: chart.maxY - bh, width: bw, height: bh)
-        NSGradient(starting: brandBlue, ending: brandPurple)!
-            .draw(in: NSBezierPath(roundedRect: bar, xRadius: 4, yRadius: 4), angle: -90)
+        gradient(NSBezierPath(roundedRect: bar, xRadius: 4, yRadius: 4), angle: 90)
     }
 }
 
@@ -183,7 +213,7 @@ struct MakeReadmeImages {
     /// Your screen → what the call sees.
     static func hero() {
         render("how-it-works", width: 1200, height: 590) {
-            fill(NSRect(x: 0, y: 0, width: 1200, height: 590), canvasBG, radius: 28)
+            canvas(1200, 590)
 
             // Your screen.
             let screen = NSRect(x: 70, y: 110, width: 500, height: 312)
@@ -191,9 +221,15 @@ struct MakeReadmeImages {
             let half = NSRect(x: screen.minX, y: screen.minY, width: screen.width / 2, height: screen.height)
             drawDocument(in: half)
             drawPrivateSide(in: NSRect(x: half.maxX, y: screen.minY, width: screen.width / 2, height: screen.height))
-            stroke(half.insetBy(dx: 2, dy: 2), outlineRed, width: 5)
-            text("Your screen", at: NSPoint(x: screen.midX, y: 40), size: 28, weight: .bold, align: .center)
-            text("You pick a half. A red outline shows what's shared.", at: NSPoint(x: screen.midX, y: 516),
+            let ring = NSBezierPath(rect: half)
+            ring.append(NSBezierPath(rect: half.insetBy(dx: 6, dy: 6)))
+            ring.windingRule = .evenOdd
+            gradient(ring)
+            chip("Shared", center: NSPoint(x: half.midX, y: half.maxY + 2), style: .accent)
+            chip("Private", center: NSPoint(x: half.maxX + half.width / 2, y: half.maxY + 2), style: .filled)
+            text("YOUR SCREEN", at: NSPoint(x: screen.midX, y: 30), size: 14, weight: 700, color: eyebrow, align: .center, kern: 2.2)
+            text("You pick a half", at: NSPoint(x: screen.midX, y: 52), size: 30, weight: 800, align: .center)
+            text("A colored outline shows what's shared.", at: NSPoint(x: screen.midX, y: 516),
                  size: 18, color: inkSoft, align: .center)
 
             // Arrow.
@@ -203,14 +239,14 @@ struct MakeReadmeImages {
             path.line(to: NSPoint(x: 724, y: arrowY))
             path.lineWidth = 8
             path.lineCapStyle = .round
-            brandBlue.setStroke()
+            Brand.purple.setStroke()
             path.stroke()
             let head = NSBezierPath()
             head.move(to: NSPoint(x: 744, y: arrowY))
             head.line(to: NSPoint(x: 716, y: arrowY - 20))
             head.line(to: NSPoint(x: 716, y: arrowY + 20))
             head.close()
-            brandBlue.setFill()
+            Brand.pink.setFill()
             head.fill()
 
             // The call.
@@ -227,8 +263,9 @@ struct MakeReadmeImages {
                 fill(t, NSColor(hex: 0x3C4043), radius: 6)
                 symbol("person.fill", in: t.insetBy(dx: 20, dy: 8), color: NSColor(hex: 0x9AA0A6))
             }
-            text("What the call sees", at: NSPoint(x: call.midX, y: 40), size: 28, weight: .bold, align: .center)
-            text("Only that half. The rest stays private.", at: NSPoint(x: call.midX, y: 516),
+            text("WHAT THE CALL SEES", at: NSPoint(x: call.midX, y: 30), size: 14, weight: 700, color: eyebrow, align: .center, kern: 2.2)
+            text("Only that half", at: NSPoint(x: call.midX, y: 52), size: 30, weight: 800, align: .center)
+            text("Everything else stays private.", at: NSPoint(x: call.midX, y: 516),
                  size: 18, color: inkSoft, align: .center)
         }
     }
@@ -236,17 +273,19 @@ struct MakeReadmeImages {
     /// Three steps: pick a half, pick the Portion window, click Share.
     static func steps() {
         render("three-steps", width: 1200, height: 470) {
-            fill(NSRect(x: 0, y: 0, width: 1200, height: 470), canvasBG, radius: 28)
+            canvas(1200, 470)
             let panelW: CGFloat = 352, gap: CGFloat = 22, top: CGFloat = 40
             let titles = ["Pick a half", "Choose “Portion”", "Click Share"]
             let notes = ["Click the Portion icon in your menu bar.",
-                         "In Zoom or Meet, pick the blue Portion window.",
+                         "In Zoom or Meet, pick the Portion window.",
                          "Done! The card goes away and your half is live."]
             for i in 0..<3 {
                 let p = NSRect(x: 40 + CGFloat(i) * (panelW + gap), y: top, width: panelW, height: 390)
-                shadowed(blur: 16, y: 4, alpha: 0.10) { fill(p, .white, radius: 20) }
-                circleBadge(i + 1, center: NSPoint(x: p.minX + 40, y: p.minY + 40), radius: 20)
-                text(titles[i], at: NSPoint(x: p.minX + 72, y: p.minY + 25), size: 24, weight: .bold)
+                shadowed(blur: 16, y: 4, alpha: 0.06) { fill(p, .white, radius: 20) }
+                stroke(p, canvasBorder, width: 1, radius: 20)
+                circleBadge(i + 1, center: NSPoint(x: p.minX + 44, y: p.minY + 42), radius: 22)
+                text("STEP \(i + 1)", at: NSPoint(x: p.minX + 80, y: p.minY + 18), size: 12, weight: 700, color: eyebrow, kern: 2)
+                text(titles[i], at: NSPoint(x: p.minX + 80, y: p.minY + 34), size: 24, weight: 800)
                 let art = NSRect(x: p.minX + 24, y: p.minY + 84, width: p.width - 48, height: 210)
                 switch i {
                 case 0: stepMenu(art)
@@ -266,7 +305,7 @@ struct MakeReadmeImages {
             symbol(s, in: NSRect(x: bar.maxX - 34 - CGFloat(i) * 30, y: bar.minY + 9, width: 22, height: 16), color: inkSoft)
         }
         let iconBox = NSRect(x: bar.minX + 120, y: bar.minY + 3, width: 36, height: 28)
-        fill(iconBox, brandBlue.withAlphaComponent(0.18), radius: 6)
+        fill(iconBox, Brand.purple.withAlphaComponent(0.15), radius: 6)
         symbol("rectangle.split.2x1", in: iconBox.insetBy(dx: 7, dy: 6), color: ink)
         // Dropdown.
         let menu = NSRect(x: iconBox.minX - 10, y: bar.maxY + 8, width: 190, height: 140)
@@ -274,16 +313,16 @@ struct MakeReadmeImages {
         let rows = [("rectangle.lefthalf.filled", "Share Left Half"), ("rectangle.righthalf.filled", "Share Right Half"), ("", "Stop Sharing")]
         for (i, row) in rows.enumerated() {
             let rr = NSRect(x: menu.minX + 6, y: menu.minY + 10 + CGFloat(i) * 40, width: menu.width - 12, height: 34)
-            if i == 0 { fill(rr, brandBlue, radius: 6) }
+            if i == 0 { gradient(rr, radius: rr.height / 2) }
             let color: NSColor = i == 0 ? .white : (i == 2 ? inkSoft : ink)
             if !row.0.isEmpty { symbol(row.0, in: NSRect(x: rr.minX + 10, y: rr.minY + 9, width: 22, height: 16), color: color) }
-            text(row.1, at: NSPoint(x: rr.minX + 40, y: rr.minY + 7), size: 15, weight: .medium, color: color)
+            text(row.1, at: NSPoint(x: rr.minX + 40, y: rr.minY + 7), size: 15, weight: 500, color: color)
         }
     }
 
     static func stepPicker(_ r: NSRect) {
         fill(r, NSColor(hex: 0x35363A), radius: 12)
-        text("Choose what to share", at: NSPoint(x: r.minX + 16, y: r.minY + 12), size: 14, weight: .semibold, color: .white)
+        text("Choose what to share", at: NSPoint(x: r.minX + 16, y: r.minY + 12), size: 14, weight: 600, color: .white)
         let tileW: CGFloat = (r.width - 16 * 3) / 2, tileH: CGFloat = 110
         for i in 0..<2 {
             let t = NSRect(x: r.minX + 16 + CGFloat(i) * (tileW + 16), y: r.minY + 48, width: tileW, height: tileH)
@@ -293,7 +332,7 @@ struct MakeReadmeImages {
                 fill(g, NSColor.white.withAlphaComponent(0.3), radius: 4)
                 fill(NSRect(x: g.minX, y: g.minY, width: g.width / 2, height: g.height), .white, radius: 4)
                 stroke(g, .white, width: 2, radius: 4)
-                text("Portion", at: NSPoint(x: t.midX, y: t.minY + 58), size: 20, weight: .heavy, color: .white, align: .center)
+                text("Portion", at: NSPoint(x: t.midX, y: t.minY + 58), size: 20, weight: 800, color: .white, align: .center)
                 stroke(t.insetBy(dx: -5, dy: -5), NSColor(hex: 0x8AB4F8), width: 3, radius: 9)
             } else {
                 fill(t, NSColor(hex: 0x1F1F1F), radius: 6)
@@ -313,16 +352,16 @@ struct MakeReadmeImages {
         let cancel = NSRect(x: r.maxX - 230, y: r.minY + 24, width: 96, height: 40)
         let share = NSRect(x: r.maxX - 122, y: r.minY + 24, width: 104, height: 40)
         stroke(cancel, NSColor(hex: 0x8AB4F8), width: 1.5, radius: 20)
-        text("Cancel", at: NSPoint(x: cancel.midX, y: cancel.minY + 10), size: 16, weight: .medium, color: NSColor(hex: 0x8AB4F8), align: .center)
+        text("Cancel", at: NSPoint(x: cancel.midX, y: cancel.minY + 10), size: 16, weight: 500, color: NSColor(hex: 0x8AB4F8), align: .center)
         fill(share, NSColor(hex: 0x8AB4F8), radius: 20)
-        text("Share", at: NSPoint(x: share.midX, y: share.minY + 10), size: 16, weight: .semibold, color: NSColor(hex: 0x202124), align: .center)
+        text("Share", at: NSPoint(x: share.midX, y: share.minY + 10), size: 16, weight: 600, color: NSColor(hex: 0x202124), align: .center)
         symbol("cursorarrow", in: NSRect(x: share.midX + 6, y: share.midY + 2, width: 28, height: 34), color: .white)
         // Result: "You're presenting".
         let banner = NSRect(x: r.minX + 18, y: r.minY + 100, width: r.width - 36, height: 90)
         fill(banner, NSColor(hex: 0x1E3A2B), radius: 10)
         symbol("checkmark.circle.fill", in: NSRect(x: banner.minX + 16, y: banner.midY - 18, width: 36, height: 36), color: NSColor(hex: 0x34C759),
                palette: [.white, NSColor(hex: 0x34C759)])
-        text("You're presenting", at: NSPoint(x: banner.minX + 64, y: banner.minY + 22), size: 18, weight: .semibold, color: .white)
+        text("You're presenting", at: NSPoint(x: banner.minX + 64, y: banner.minY + 22), size: 18, weight: 600, color: .white)
         text("only the half you picked", at: NSPoint(x: banner.minX + 64, y: banner.minY + 48), size: 14, color: NSColor(hex: 0xA8DAB5))
     }
 
@@ -348,7 +387,7 @@ struct MakeReadmeImages {
     /// The menu bar menu.
     static func menu() {
         render("menu", width: 560, height: 470) {
-            fill(NSRect(x: 0, y: 0, width: 560, height: 470), canvasBG, radius: 28)
+            canvas(560, 470)
             let m = NSRect(x: 60, y: 40, width: 440, height: 390)
             shadowed(blur: 20, y: 6, alpha: 0.16) { fill(m, .white, radius: 12) }
             stroke(m, line, width: 1, radius: 12)
@@ -356,7 +395,7 @@ struct MakeReadmeImages {
             func row(_ title: String, icon: String? = nil, check: Bool = false, chevron: Bool = false,
                      disabled: Bool = false, highlight: Bool = false) {
                 let r = NSRect(x: m.minX + 8, y: y, width: m.width - 16, height: 32)
-                if highlight { fill(r, brandBlue, radius: 6) }
+                if highlight { gradient(r, radius: r.height / 2) }
                 let color: NSColor = highlight ? .white : disabled ? inkSoft : ink
                 if check { symbol("checkmark", in: NSRect(x: r.minX + 10, y: r.minY + 9, width: 14, height: 14), color: color, weight: .bold) }
                 if let icon { symbol(icon, in: NSRect(x: r.minX + 32, y: r.minY + 8, width: 22, height: 16), color: color) }

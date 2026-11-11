@@ -5,7 +5,7 @@
 Show people your slides, document, or demo, and keep your email, chat, and notes on the other half to yourself.
 
 <p align="center">
-  <img src="docs/images/how-it-works.png" alt="Your screen has a red outline around the left half. The call shows only that half." width="800">
+  <img src="docs/images/how-it-works.png" alt="Your screen has a purple-and-pink outline around the left half. The call shows only that half." width="800">
 </p>
 
 ---
@@ -36,7 +36,7 @@ Zoom and Chrome need the same permission to share windows. If you've shared your
   <img src="docs/images/three-steps.png" alt="Step 1: choose Share Left Half from the Portion menu. Step 2: choose the Portion window in Zoom or Meet. Step 3: click Share." width="800">
 </p>
 
-**1. Pick a half.** Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half**. A red outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
+**1. Pick a half.** Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half**. A purple-and-pink outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
 
 **2. Share the "Portion" window in your call.**
 
@@ -48,12 +48,12 @@ Zoom and Chrome need the same permission to share windows. If you've shared your
 
 **3. That's it.** Anything you put on that half of your screen is now visible in the call.
 
-### Look for the blue card
+### Look for the Portion card
 
 In the list of windows, Portion shows up as this card, so you can find it right away:
 
 <p align="center">
-  <img src="docs/images/portion-card.png" alt="A blue Portion card that says Sharing left half" width="320">
+  <img src="docs/images/portion-card.png" alt="A purple-and-pink Portion card that says Sharing left half" width="320">
 </p>
 
 In Meet and Zoom, the card disappears as soon as you click **Share**, and your screen appears in its place. If you click **Cancel** instead, the card stays up for your next try. In other apps, it disappears on its own after a minute.
@@ -79,7 +79,7 @@ Stop presenting in your call as usual, then choose **Stop Sharing** in the Porti
 | **Share Left Half / Share Right Half** | Starts sharing that half, or switches to it. |
 | **Stop Sharing** | Stops Portion. |
 | **Display** | Appears only if you have more than one monitor. Picks which screen to split. |
-| **Outline Shared Area** | Shows or hides the red outline. |
+| **Outline Shared Area** | Shows or hides the outline around the shared half. |
 | **Portion Window Placement** | Try **On Other Half, Behind Windows** if Portion is missing from your call app's list (see below). |
 | **How to Share in Zoom / Meet…** | A quick reminder of the steps. |
 | **Launch at Login** | Starts Portion automatically when you log in. |
@@ -94,7 +94,7 @@ Quit Portion and open it again. If that doesn't help, select **Portion** in **Sy
 **I don't see Portion in Zoom's or Meet's list of windows.**
 Make sure you chose **Share Left Half** or **Share Right Half** *first*. The Portion window only exists while Portion is sharing. If the list was already open, close it and open it again. If it's still missing, open the Portion menu → **Portion Window Placement** → **On Other Half, Behind Windows**.
 
-**People in the call see the blue card instead of my screen.**
+**People in the call see the Portion card instead of my screen.**
 The card goes away as soon as Meet or Zoom starts sharing. In other apps, it can take up to a minute to disappear on its own.
 
 **Will people see my notifications, email, or other windows?**

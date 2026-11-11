@@ -3,7 +3,8 @@ import QuartzCore
 
 /// A bold, branded card drawn over the mirror for the first few seconds of sharing, so the
 /// Portion window is easy to pick out in Zoom / Meet "share a window" thumbnails.
-/// Styled after the app icon: blue-to-purple gradient, a screen with the shared half lit.
+/// Styled after the app icon and christopherrose.com: the purple-to-pink brand gradient, a
+/// screen with the shared half lit, a heavy Rubik wordmark and a spaced uppercase label.
 final class IntroCardLayer: CAGradientLayer {
     private let screenLayer = CAShapeLayer()
     private let sharedHalf = CAShapeLayer()
@@ -13,12 +14,9 @@ final class IntroCardLayer: CAGradientLayer {
 
     override init() {
         super.init()
-        colors = [
-            NSColor(calibratedRed: 0.20, green: 0.45, blue: 0.98, alpha: 1).cgColor,
-            NSColor(calibratedRed: 0.38, green: 0.22, blue: 0.85, alpha: 1).cgColor,
-        ]
-        startPoint = CGPoint(x: 0, y: 1)
-        endPoint = CGPoint(x: 1, y: 0)
+        colors = Brand.gradientColors
+        startPoint = Brand.gradientStart
+        endPoint = Brand.gradientEnd
 
         screenLayer.fillColor = NSColor.white.withAlphaComponent(0.3).cgColor
         screenLayer.strokeColor = NSColor.white.cgColor
@@ -32,7 +30,6 @@ final class IntroCardLayer: CAGradientLayer {
             layer.truncationMode = .end
             addSublayer(layer)
         }
-        titleLayer.string = MirrorWindowController.windowTitle
     }
 
     override init(layer: Any) {
@@ -43,7 +40,6 @@ final class IntroCardLayer: CAGradientLayer {
 
     func configure(side: Side) {
         self.side = side
-        subtitleLayer.string = "Sharing \(side.title.lowercased())"
     }
 
     /// Sizes everything relative to the window so it reads well even as a tiny thumbnail.
@@ -58,8 +54,8 @@ final class IntroCardLayer: CAGradientLayer {
         // Screen glyph.
         let glyphW = unit * 0.55
         let glyphH = glyphW * 0.62
-        let titleSize = unit * 0.18
-        let subtitleSize = unit * 0.065
+        let titleSize = unit * 0.19
+        let subtitleSize = unit * 0.055
         let titleH = ceil(titleSize * 1.25)
         let subtitleH = ceil(subtitleSize * 1.35)
         let gap1 = unit * 0.08
@@ -85,13 +81,20 @@ final class IntroCardLayer: CAGradientLayer {
         sharedHalf.mask = mask
 
         top -= gap1 + titleH
-        titleLayer.font = NSFont.systemFont(ofSize: titleSize, weight: .heavy)
-        titleLayer.fontSize = titleSize
+        titleLayer.string = NSAttributedString(string: MirrorWindowController.windowTitle, attributes: [
+            .font: Brand.font(titleSize, weight: 800),
+            .foregroundColor: NSColor.white,
+            .kern: -titleSize * 0.02,
+        ])
         titleLayer.frame = CGRect(x: 0, y: top, width: bounds.width, height: titleH)
 
         top -= gap2 + subtitleH
-        subtitleLayer.font = NSFont.systemFont(ofSize: subtitleSize, weight: .semibold)
-        subtitleLayer.fontSize = subtitleSize
+        // Uppercase, letter-spaced label, like the site's date / eyebrow labels.
+        subtitleLayer.string = NSAttributedString(string: "Sharing \(side.title)".uppercased(), attributes: [
+            .font: Brand.font(subtitleSize, weight: 700),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+            .kern: subtitleSize * 0.18,
+        ])
         subtitleLayer.frame = CGRect(x: 0, y: top, width: bounds.width, height: subtitleH)
 
         for layer in [self, screenLayer, sharedHalf, titleLayer, subtitleLayer] {

@@ -34,6 +34,10 @@ The app bundle is at `build/Portion.app`. The DMG in `dist/` contains the app an
 
 The certificate is only trusted on your Mac, so Gatekeeper blocks the first launch elsewhere. Users can right-click Portion → **Open**, or run `xattr -dr com.apple.quarantine /Applications/Portion.app`. For proper distribution, build with `SIGN_IDENTITY="Developer ID Application: …" ./build.sh`, then notarize it.
 
+## Look and feel
+
+Portion's style matches [christopherrose.com](https://christopherrose.com): black and white, with the purple-to-pink accent gradient (`#aa3bff` → `#ff3bac`) and the [Rubik](https://fonts.google.com/specimen/Rubik) typeface. The colors and font live in `Sources/Portion/Brand.swift`. The app icon comes from `Scripts/make-icon.swift`. After changing it, delete `Resources/AppIcon.icns` and rebuild to regenerate it.
+
 ## How it works
 
 - Portion captures half of a display with ScreenCaptureKit and draws it live into a borderless window titled **Portion**. Call apps share that window.
@@ -52,8 +56,10 @@ Sources/Portion/
   MirrorWindow.swift             The "Portion" window that you share in calls
   IntroCard.swift                Branded card shown in the Portion window when sharing starts
   ShareDetector.swift            Notices when Zoom / Meet start sharing, to dismiss the card
-  BorderOverlay.swift            Red outline around the shared area
+  BorderOverlay.swift            Gradient outline around the shared area
+  Brand.swift                    Brand colors and the Rubik font (matches christopherrose.com)
 Resources/Info.plist             Bundle metadata (LSUIElement = menu bar only)
+Resources/Fonts/                 Rubik typeface, bundled under the SIL Open Font License
 Scripts/make-icon.swift          Generates the app icon
 Scripts/make-signing-cert.sh     One-time setup: local code-signing keychain
 Scripts/make-readme-images.swift Draws the README illustrations into docs/images/
@@ -64,5 +70,5 @@ To regenerate the README illustrations:
 
 ```bash
 swiftc -parse-as-library Scripts/make-readme-images.swift Sources/Portion/IntroCard.swift \
-  -o /tmp/make-readme-images && /tmp/make-readme-images
+  Sources/Portion/Brand.swift -o /tmp/make-readme-images && /tmp/make-readme-images
 ```
