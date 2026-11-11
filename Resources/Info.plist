@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>Portion</string>
     <key>CFBundleIdentifier</key>
-    <string>app.portion.Portion</string>
+    <string>__BUNDLE_ID__</string>
     <key>CFBundleExecutable</key>
     <string>Portion</string>
     <key>CFBundleIconFile</key>
@@ -17,7 +17,7 @@
     <key>CFBundleShortVersionString</key>
     <string>__VERSION__</string>
     <key>CFBundleVersion</key>
-    <string>__VERSION__</string>
+    <string>__BUILD__</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>LSMinimumSystemVersion</key>
@@ -29,6 +29,13 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Portion</string>
+    <string>© 2026 Christopher Rose</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+    <!-- Portion uses no encryption, so App Store Connect skips the export compliance questions. -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
 </dict>
 </plist>

@@ -1,8 +1,10 @@
-// Draws the illustrations used in README.md into docs/images/, in the christopherrose.com
-// style (see Sources/Portion/Brand.swift).
+// Draws Portion's marketing graphics in the christopherrose.com style (see
+// Sources/Portion/Brand.swift):
+//   docs/images/          illustrations used in README.md
+//   AppStore/screenshots/ Mac App Store screenshots (2880 × 1800)
 // Usage (from the repo root):
-//   swiftc -parse-as-library Scripts/make-readme-images.swift Sources/Portion/IntroCard.swift \
-//     Sources/Portion/Brand.swift -o /tmp/make-readme-images && /tmp/make-readme-images
+//   swiftc -parse-as-library Scripts/make-graphics.swift Sources/Portion/IntroCard.swift \
+//     Sources/Portion/Brand.swift -o /tmp/make-graphics && /tmp/make-graphics
 import AppKit
 
 // Stand-ins for the app types IntroCard.swift refers to.
@@ -29,7 +31,8 @@ let callBG = NSColor(hex: 0x202124)
 
 // MARK: Drawing helpers (top-left origin)
 
-func render(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2, _ draw: () -> Void) {
+func render(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2, in dir: String = "docs/images",
+            _ draw: () -> Void) {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(width * scale), pixelsHigh: Int(height * scale),
                                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
                                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
@@ -42,9 +45,19 @@ func render(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2,
     NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
     draw()
     NSGraphicsContext.restoreGraphicsState()
-    let url = URL(fileURLWithPath: "docs/images/\(name).png")
+    let url = URL(fileURLWithPath: "\(dir)/\(name).png")
     try! rep.representation(using: .png, properties: [:])!.write(to: url)
     print("wrote", url.path)
+}
+
+/// Draws `draw` (laid out in its own coordinate space) moved to `origin` and scaled.
+func placed(at origin: NSPoint, scale: CGFloat, _ draw: () -> Void) {
+    let ctx = NSGraphicsContext.current!.cgContext
+    ctx.saveGState()
+    ctx.translateBy(x: origin.x, y: origin.y)
+    ctx.scaleBy(x: scale, y: scale)
+    draw()
+    ctx.restoreGState()
 }
 
 func fill(_ rect: NSRect, _ color: NSColor, radius: CGFloat = 0) {
@@ -201,19 +214,28 @@ func drawMonitor(_ screen: NSRect) {
 // MARK: Images
 
 @main
-struct MakeReadmeImages {
+struct MakeGraphics {
     static func main() {
         try? FileManager.default.createDirectory(atPath: "docs/images", withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(atPath: "AppStore/screenshots", withIntermediateDirectories: true)
         hero()
         steps()
         card()
         menu()
+        appStoreScreenshots()
     }
 
     /// Your screen → what the call sees.
     static func hero() {
         render("how-it-works", width: 1200, height: 590) {
             canvas(1200, 590)
+            heroScene()
+        }
+    }
+
+    /// The hero illustration without its canvas, laid out in a 1200 × 590 space.
+    static func heroScene() {
+        do {
 
             // Your screen.
             let screen = NSRect(x: 70, y: 110, width: 500, height: 312)
@@ -388,6 +410,13 @@ struct MakeReadmeImages {
     static func menu() {
         render("menu", width: 560, height: 470) {
             canvas(560, 470)
+            menuScene()
+        }
+    }
+
+    /// The menu without its canvas, laid out in a 560 × 470 space (menu at 60, 40, 440 × 390).
+    static func menuScene() {
+        do {
             let m = NSRect(x: 60, y: 40, width: 440, height: 390)
             shadowed(blur: 20, y: 6, alpha: 0.16) { fill(m, .white, radius: 12) }
             stroke(m, line, width: 1, radius: 12)
@@ -421,5 +450,187 @@ struct MakeReadmeImages {
             row("Launch at Login", check: true)
             row("Quit Portion")
         }
+    }
+}
+
+// MARK: - Mac App Store screenshots (1440 × 900 points, rendered at 2880 × 1800)
+
+extension MakeGraphics {
+    static let shotW: CGFloat = 1440, shotH: CGFloat = 900
+
+    static func appStoreScreenshots() {
+        screenshot("01-share-half", eyebrow: "PORTION FOR MAC",
+                   headline: [("Share ", false), ("half", true), (" your screen.", false)],
+                   subline: "Present one half in your video call. Keep the other half to yourself.") {
+            placed(at: NSPoint(x: 120, y: 280), scale: 1) { heroScene() }
+        }
+
+        screenshot("02-find-it", eyebrow: "EASY TO PICK",
+                   headline: [("Find it ", false), ("instantly", true), (".", false)],
+                   subline: "Portion shows up as a bold card in your call's window list. Click Share and it's live.") {
+            let scale: CGFloat = 2.55
+            let size = NSSize(width: 304 * scale, height: 210 * scale)
+            placed(at: NSPoint(x: (shotW - size.width) / 2, y: 290), scale: scale) {
+                stepPicker(NSRect(x: 0, y: 0, width: 304, height: 210))
+            }
+        }
+
+        screenshot("03-private", eyebrow: "PRIVATE BY DESIGN",
+                   headline: [("Everything else ", true), ("stays private.", false)],
+                   subline: "An outline shows exactly what's shared. Email, chat and notifications on the other half stay yours.") {
+            placed(at: NSPoint(x: (shotW - 500 * 1.5) / 2, y: 300), scale: 1.5) { privacyScene() }
+        }
+
+        screenshot("04-menu-bar", eyebrow: "ONE CLICK",
+                   headline: [("Lives in your ", false), ("menu bar", true), (".", false)],
+                   subline: "No windows, no clutter. Pick a half, switch sides or stop, right from the menu bar.") {
+            menuBarScene()
+        }
+
+        screenshot("05-switch", eyebrow: "NO RESHARING",
+                   headline: [("Switch halves ", false), ("mid-call", true), (".", false)],
+                   subline: "Jump from your slides to your demo. The call keeps going, with no need to share again.") {
+            switchScene()
+        }
+    }
+
+    /// A white, softly glowing slide with a centered eyebrow, headline and subline.
+    static func screenshot(_ name: String, eyebrow label: String, headline parts: [(String, Bool)],
+                           subline: String, art: () -> Void) {
+        render(name, width: shotW, height: shotH, in: "AppStore/screenshots") {
+            fill(NSRect(x: 0, y: 0, width: shotW, height: shotH), .white)
+            glow(center: NSPoint(x: 120, y: 60), radius: 620, color: Brand.purple)
+            glow(center: NSPoint(x: shotW - 80, y: shotH - 40), radius: 640, color: Brand.pink)
+            text(label, at: NSPoint(x: shotW / 2, y: 70), size: 17, weight: 700, color: eyebrow, align: .center, kern: 3)
+            headline(parts, centerX: shotW / 2, y: 98, size: 68)
+            text(subline, at: NSPoint(x: shotW / 2, y: 196), size: 25, color: inkSoft, align: .center)
+            art()
+        }
+    }
+
+    static func glow(center: NSPoint, radius: CGFloat, color: NSColor) {
+        NSGradient(colors: [color.withAlphaComponent(0.13), color.withAlphaComponent(0)])!
+            .draw(fromCenter: center, radius: 0, toCenter: center, radius: radius, options: [])
+    }
+
+    /// A Rubik headline where accent words are filled with the brand gradient, like the site's
+    /// `.home-accent-word`.
+    static func headline(_ parts: [(String, Bool)], centerX: CGFloat, y: CGFloat, size: CGFloat) {
+        let attrs: [NSAttributedString.Key: Any] = [.font: Brand.font(size, weight: 800), .kern: -size * 0.02]
+        let strings = parts.map { NSAttributedString(string: $0.0, attributes: attrs) }
+        let total = strings.reduce(0) { $0 + $1.size().width }
+        var x = centerX - total / 2
+        for (str, part) in zip(strings, parts) {
+            let sz = str.size()
+            let rect = NSRect(x: x, y: y, width: ceil(sz.width), height: ceil(sz.height))
+            if part.1 {
+                // Clip to the glyph outlines, then paint the gradient through them.
+                let line = CTLineCreateWithAttributedString(str)
+                var ascent: CGFloat = 0, descent: CGFloat = 0, leading: CGFloat = 0
+                let width = CGFloat(CTLineGetTypographicBounds(line, &ascent, &descent, &leading))
+                let ctx = NSGraphicsContext.current!.cgContext
+                ctx.saveGState()
+                // Our canvas is flipped; Core Text wants y up, with the baseline at the origin.
+                let baseline = rect.minY + (sz.height - (ascent + descent)) / 2 + ascent
+                ctx.translateBy(x: rect.minX, y: baseline)
+                ctx.scaleBy(x: 1, y: -1)
+                ctx.textMatrix = .identity
+                ctx.textPosition = .zero
+                ctx.setTextDrawingMode(.clip)
+                CTLineDraw(line, ctx)
+                let colors = [Brand.purple.cgColor, Brand.pink.cgColor] as CFArray
+                let g = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colors, locations: [0, 1])!
+                ctx.drawLinearGradient(g, start: CGPoint(x: 0, y: ascent), end: CGPoint(x: width, y: -descent), options: [])
+                ctx.restoreGState()
+            } else {
+                let plain = NSMutableAttributedString(attributedString: str)
+                plain.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: plain.length))
+                plain.draw(at: rect.origin)
+            }
+            x += sz.width
+        }
+    }
+
+    /// A monitor sharing one half: document on the shared side, private apps on the other.
+    static func monitor(_ screen: NSRect, shared side: Side, chips: Bool = true, chipSize: CGFloat = 15,
+                        sharedLabel: String = "Shared", privateLabel: String = "Private") {
+        drawMonitor(screen)
+        let left = NSRect(x: screen.minX, y: screen.minY, width: screen.width / 2, height: screen.height)
+        let right = NSRect(x: left.maxX, y: screen.minY, width: screen.width / 2, height: screen.height)
+        let (sharedHalf, privateHalf) = side == .left ? (left, right) : (right, left)
+        drawDocument(in: sharedHalf)
+        drawPrivateSide(in: privateHalf)
+        let ring = NSBezierPath(rect: sharedHalf)
+        ring.append(NSBezierPath(rect: sharedHalf.insetBy(dx: 6, dy: 6)))
+        ring.windingRule = .evenOdd
+        gradient(ring)
+        if chips {
+            chip(sharedLabel, center: NSPoint(x: sharedHalf.midX, y: screen.maxY + 2), style: .accent, size: chipSize)
+            chip(privateLabel, center: NSPoint(x: privateHalf.midX, y: screen.maxY + 2), style: .filled, size: chipSize)
+        }
+    }
+
+    /// Shared document on the left; a notification arriving on the private right half.
+    static func privacyScene() {
+        let screen = NSRect(x: 0, y: 0, width: 500, height: 312)
+        monitor(screen, shared: .left)
+        let note = NSRect(x: screen.maxX - 214, y: screen.minY + 12, width: 202, height: 58)
+        shadowed(blur: 12, y: 3, alpha: 0.18) { fill(note, NSColor.white.withAlphaComponent(0.97), radius: 12) }
+        let icon = NSRect(x: note.minX + 10, y: note.midY - 15, width: 30, height: 30)
+        fill(icon, NSColor(hex: 0x34C759), radius: 8)
+        symbol("message.fill", in: icon.insetBy(dx: 6, dy: 7), color: .white)
+        text("Messages", at: NSPoint(x: icon.maxX + 10, y: note.minY + 10), size: 12, weight: 700)
+        text("Dinner at 7? 🍝", at: NSPoint(x: icon.maxX + 10, y: note.minY + 29), size: 12, color: inkSoft)
+        symbol("eye.slash.fill", in: NSRect(x: note.maxX - 30, y: note.minY + 10, width: 18, height: 14), color: Brand.purple)
+    }
+
+    /// A Mac menu bar across the slide, with the Portion menu open below its icon.
+    static func menuBarScene() {
+        let bar = NSRect(x: 200, y: 290, width: shotW - 400, height: 40)
+        shadowed(blur: 10, y: 2, alpha: 0.08) { fill(bar, NSColor(hex: 0xF2F1F4), radius: 12) }
+        symbol("apple.logo", in: NSRect(x: bar.minX + 22, y: bar.minY + 10, width: 18, height: 20), color: ink)
+        var itemX = bar.minX + 62
+        for (i, item) in ["Finder", "File", "Edit", "View", "Go", "Window", "Help"].enumerated() {
+            let w = text(item, at: NSPoint(x: itemX, y: bar.minY + 10), size: 16, weight: i == 0 ? 700 : 400).width
+            itemX += w + 26
+        }
+        text("Tue 9:41 AM", at: NSPoint(x: bar.maxX - 20, y: bar.minY + 10), size: 16, weight: 500, align: .right)
+        for (i, s) in ["wifi", "battery.75percent", "magnifyingglass"].enumerated() {
+            symbol(s, in: NSRect(x: bar.maxX - 170 - CGFloat(i) * 40, y: bar.minY + 11, width: 24, height: 18), color: ink)
+        }
+        let iconBox = NSRect(x: bar.maxX - 330, y: bar.minY + 4, width: 44, height: 32)
+        gradient(iconBox, radius: 8)
+        symbol("rectangle.split.2x1", in: iconBox.insetBy(dx: 10, dy: 8), color: .white)
+        // The menu (menuScene's menu sits at 60, 40, 440 wide in its own space), right-aligned
+        // under the icon, as macOS does near the edge of the screen.
+        let scale: CGFloat = 1.22
+        let menuLeft = iconBox.maxX - 440 * scale
+        placed(at: NSPoint(x: menuLeft - 60 * scale, y: bar.maxY + 6 - 40 * scale), scale: scale) { menuScene() }
+    }
+
+    /// Two monitors: sharing the left half, then the right, with the call carrying on.
+    static func switchScene() {
+        let w: CGFloat = 470, h: CGFloat = 294, y: CGFloat = 340
+        monitor(NSRect(x: 120, y: y, width: w, height: h), shared: .left, sharedLabel: "Slides", privateLabel: "Notes")
+        monitor(NSRect(x: shotW - 120 - w, y: y, width: w, height: h), shared: .right, sharedLabel: "Demo", privateLabel: "Notes")
+        // Two-way arrow between them.
+        let midY = y + h / 2, x0: CGFloat = 120 + w + 40, x1 = shotW - 120 - w - 40
+        let shaft = NSBezierPath()
+        shaft.move(to: NSPoint(x: x0 + 18, y: midY))
+        shaft.line(to: NSPoint(x: x1 - 18, y: midY))
+        shaft.lineWidth = 8
+        shaft.lineCapStyle = .round
+        Brand.purple.setStroke()
+        shaft.stroke()
+        for (tip, dir) in [(x0, CGFloat(1)), (x1, CGFloat(-1))] {
+            let head = NSBezierPath()
+            head.move(to: NSPoint(x: tip, y: midY))
+            head.line(to: NSPoint(x: tip + 26 * dir, y: midY - 18))
+            head.line(to: NSPoint(x: tip + 26 * dir, y: midY + 18))
+            head.close()
+            (dir > 0 ? Brand.purple : Brand.pink).setFill()
+            head.fill()
+        }
+        chip("Still sharing", center: NSPoint(x: shotW / 2, y: midY + 50), style: .outlined, size: 16)
     }
 }

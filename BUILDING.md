@@ -19,7 +19,7 @@ This creates a self-signed certificate called **Portion Signing** in its own key
 
 **Why a separate keychain:** signing from the login keychain prompts for the login keychain password. On managed Macs that password often no longer matches the Mac password.
 
-Without the certificate, `build.sh` falls back to an ad-hoc signature. To recover the permission after an ad-hoc build: quit Portion, run `tccutil reset ScreenCapture app.portion.Portion`, then reopen Portion and allow it again.
+Without the certificate, `build.sh` falls back to an ad-hoc signature. To recover the permission after an ad-hoc build: quit Portion, run `tccutil reset ScreenCapture com.christopherrose.Portion`, then reopen Portion and allow it again.
 
 ## Build the app and DMG
 
@@ -29,6 +29,16 @@ VERSION=1.1.0 ./build.sh    # set the version
 ```
 
 The app bundle is at `build/Portion.app`. The DMG in `dist/` contains the app and an Applications shortcut.
+
+Every build is sandboxed (`Resources/Portion.entitlements`) and includes a privacy manifest (`Resources/PrivacyInfo.xcprivacy`), just like the App Store version, so local testing matches what App Review sees.
+
+## Mac App Store builds
+
+```bash
+TEAM_ID=… APP_STORE_PROFILE=path/to/profile.provisionprofile VERSION=1.0.0 BUILD=1 ./build.sh appstore
+```
+
+This needs full Xcode installed, an Apple Distribution certificate, a Mac Installer Distribution certificate, and a Mac App Store provisioning profile for `com.christopherrose.Portion`. It embeds the profile, records the Xcode/SDK versions that App Store Connect checks, signs with the store entitlements, and writes `dist/Portion-<version>.pkg` for Transporter. For the whole process, see [AppStore/README.md](AppStore/README.md).
 
 ## Sharing builds with other people
 
@@ -59,16 +69,19 @@ Sources/Portion/
   BorderOverlay.swift            Gradient outline around the shared area
   Brand.swift                    Brand colors and the Rubik font (matches christopherrose.com)
 Resources/Info.plist             Bundle metadata (LSUIElement = menu bar only)
+Resources/Portion.entitlements   App Sandbox (required for the Mac App Store)
+Resources/PrivacyInfo.xcprivacy  Privacy manifest: no tracking, no data collected
+AppStore/                        App Store listing text, screenshots and submission guide
 Resources/Fonts/                 Rubik typeface, bundled under the SIL Open Font License
 Scripts/make-icon.swift          Generates the app icon
 Scripts/make-signing-cert.sh     One-time setup: local code-signing keychain
-Scripts/make-readme-images.swift Draws the README illustrations into docs/images/
-build.sh                         Builds .app, signs it, and packages the .dmg
+Scripts/make-graphics.swift      Draws the README illustrations and App Store screenshots
+build.sh                         Builds and signs the .app, then packages a .dmg (or an App Store .pkg)
 ```
 
-To regenerate the README illustrations:
+To regenerate the README illustrations and App Store screenshots:
 
 ```bash
-swiftc -parse-as-library Scripts/make-readme-images.swift Sources/Portion/IntroCard.swift \
-  Sources/Portion/Brand.swift -o /tmp/make-readme-images && /tmp/make-readme-images
+swiftc -parse-as-library Scripts/make-graphics.swift Sources/Portion/IntroCard.swift \
+  Sources/Portion/Brand.swift -o /tmp/make-graphics && /tmp/make-graphics
 ```

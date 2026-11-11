@@ -14,7 +14,7 @@ Show people your slides, document, or demo, and keep your email, chat, and notes
 
 1. Open the **Portion .dmg** file.
 2. Drag **Portion** into your **Applications** folder.
-3. Open Portion from Applications. A small icon appears in your menu bar at the top of the screen. Portion has no regular window. It lives up there.
+3. Open Portion from Applications. A welcome message shows you where to find it: a small icon in your menu bar at the top of the screen. Portion has no regular window. It lives up there.
 
 > **"Portion can't be opened"?** Right-click Portion in Applications, choose **Open**, then click **Open** again. You only need to do this once.
 
@@ -105,4 +105,4 @@ Yes, when it's over the shared half.
 
 ---
 
-<sub>Building Portion from source? See [BUILDING.md](BUILDING.md).</sub>
+<sub>Portion collects no data. See the [privacy policy](PRIVACY.md). Building Portion from source? See [BUILDING.md](BUILDING.md).</sub>

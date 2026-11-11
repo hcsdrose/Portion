@@ -78,9 +78,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         workspace.addObserver(self, selector: #selector(sessionDidBecomeActive),
                               name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
 
-        if !CGPreflightScreenCaptureAccess() {
-            // Triggers the system prompt on first launch.
+        if !defaults.bool(forKey: "hasShownWelcome") {
+            defaults.set(true, forKey: "hasShownWelcome")
+            showWelcome()
+        } else if !CGPreflightScreenCaptureAccess() {
             CGRequestScreenCaptureAccess()
+        }
+    }
+
+    /// Portion has no window, only a menu bar icon, so first-time users (and App Review)
+    /// are told where to find it before macOS asks for the Screen Recording permission.
+    private func showWelcome() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let alert = NSAlert()
+            alert.messageText = "Welcome to Portion"
+            alert.informativeText = """
+            Portion lives in your menu bar, at the top right of your screen. Look for this icon: ◫
+
+            Click it and choose Share Left Half or Share Right Half. Then, in Zoom or Google Meet, share the window named “Portion”. People in your call see only that half of your screen.
+
+            Next, macOS will ask for permission to record your screen. Portion needs it to copy half of your screen into your call. Nothing is saved or sent anywhere.
+            """
+            alert.addButton(withTitle: "Continue")
+            self.runModal(alert)
+            if !CGPreflightScreenCaptureAccess() {
+                CGRequestScreenCaptureAccess()
+            }
         }
     }
 
