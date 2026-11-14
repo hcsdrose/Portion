@@ -50,12 +50,15 @@ Share just half of your screen in video calls.
 Portion lets you present one half of your Mac's screen, like your slides, a document or a demo, while the other half stays completely private. Keep your notes, email and chat right next to what you're presenting, and nobody in the call will see them.
 
 HOW IT WORKS
-1. Click the Portion icon in the menu bar and choose Share Left Half or Share Right Half.
-2. In your video call, choose to share a window and pick "Portion".
-3. That's it. Everyone in the call sees only the half you picked.
+1. Join your Zoom meeting or Google Meet call. Portion starts sharing the left half of your screen on its own.
+2. Click Share in your call and pick the window named "Portion".
+3. That's it. Everyone in the call sees only that half. When the call ends, Portion stops on its own.
+
+Using another call app, or want the right half? Pick a half from the Portion icon in the menu bar.
 
 FEATURES
 • Share the left or right half of any display
+• Starts and stops on its own with Zoom meetings and Google Meet calls
 • A colored outline shows exactly what's being shared. The call never sees the outline.
 • Switch halves in the middle of a call, without stopping or sharing again
 • Easy to find: Portion shows up as a bold card in your call's window list
@@ -95,7 +98,7 @@ Upload the five files in [`screenshots/`](screenshots/), in order, under **macOS
 1. `01-share-half.png`: Share half your screen
 2. `02-find-it.png`: Find it instantly
 3. `03-private.png`: Everything else stays private
-4. `04-menu-bar.png`: Lives in your menu bar
+4. `04-menu-bar.png`: Lives in your menu bar (starts on its own with Zoom and Meet calls)
 5. `05-switch.png`: Switch halves mid-call
 
 ## App icon
@@ -133,10 +136,11 @@ On first launch, a welcome message explains where to find it. Portion's icon (tw
 HOW TO TEST
 1. Launch Portion and click Continue on the welcome message.
 2. macOS asks for Screen Recording permission. Turn on Portion in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen Portion (macOS requires this).
-3. Click the Portion menu bar icon and choose "Share Left Half". A purple-and-pink outline appears around the left half of the screen. The outline is only visible locally.
-4. Open a video call app that can share a single window, such as Zoom or Google Meet in Chrome (meet.google.com/new).
-5. Choose to share a window and pick the window named "Portion". It shows a purple card labeled "Portion".
-6. After clicking Share, the card disappears and the call shows a live picture of only the left half of the screen. Choose "Share Right Half" in the Portion menu to switch halves without re-sharing.
+3. Join a Google Meet call in Chrome (meet.google.com/new) or a Zoom meeting. Within a second, Portion starts sharing the left half of the screen on its own: a purple-and-pink outline appears around it. The outline is only visible locally.
+4. In the call, click Present (Meet) or Share Screen (Zoom), choose to share a window, and pick the window named "Portion". It shows a purple card labeled "Portion".
+5. After clicking Share, the card disappears and the call shows a live picture of only the left half of the screen. Choose "Share Right Half" in the Portion menu to switch halves without re-sharing.
+6. Leave the call. A few seconds later, Portion stops sharing on its own and the outline disappears.
+With other call apps, choose "Share Left Half" from the Portion menu first, then share the "Portion" window.
 
 WHY PORTION NEEDS SCREEN RECORDING
 Portion copies half of the screen into its own window, called "Portion", which the call app then shares. Nothing is recorded, saved or sent anywhere. Portion has no network access.
@@ -145,5 +149,8 @@ ABOUT THE PORTION WINDOW
 The "Portion" window is deliberately placed almost entirely off-screen, so the user doesn't see a second copy of their screen. It is still visible to the call app's window picker.
 
 ABOUT READING WINDOW TITLES
-While its purple card is showing, Portion checks the titles of on-screen windows a few times per second. It looks only for the indicator that Zoom or Chrome shows once sharing starts ("... is sharing a window"), then hides its card so the call sees the user's screen. Titles are never stored or sent anywhere, and the check stops as soon as sharing begins.
+While running, Portion checks the titles of on-screen windows twice per second. It looks only for a Zoom meeting window ("Zoom Meeting"), a Google Meet call tab ("Meet - abc-defg-hij") or Chrome's Meet share picker, so it can start and stop sharing with the call, and for the indicator Zoom or Chrome shows once sharing starts ("... is sharing a window"), so it can hide its card. Titles are never stored or sent anywhere.
+
+ABOUT MICROPHONE STATUS
+Browsers only expose the active tab's title, so to tell a call in a background tab from one that has ended, Portion asks Core Audio whether any input device is running (kAudioDevicePropertyDeviceIsRunningSomewhere). It never opens a microphone or receives audio, and needs no microphone permission.
 ```

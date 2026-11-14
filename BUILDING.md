@@ -52,7 +52,8 @@ Portion's style matches [christopherrose.com](https://christopherrose.com): blac
 
 - Portion captures half of a display with ScreenCaptureKit and draws it live into a borderless window titled **Portion**. Call apps share that window.
 - That window normally hangs off the bottom-right corner of the rightmost display, overlapping it by one pixel. If the window were *fully* off-screen, ScreenCaptureKit couldn't snapshot it, and share pickers would show a blank thumbnail.
-- When sharing starts, the window shows a branded card (`IntroCard.swift`), so it's easy to spot in pickers. macOS doesn't report when another app starts capturing a window. Instead, `ShareDetector.swift` watches for the "sharing" indicator windows that Chrome ("… is sharing a window.") and Zoom ("zoom share toolbar window") open, and dismisses the card when one appears. A 60-second fallback covers other apps.
+- When sharing starts, the window shows a branded card (`IntroCard.swift`), so it's easy to spot in pickers. macOS doesn't report when another app starts capturing a window. Instead, `ShareDetector.swift` watches for the "sharing" indicator windows that Chrome ("… is sharing a window.") and Zoom ("zoom share toolbar window") open, and dismisses the card when one appears. A 60-second fallback covers other apps. When sharing started on its own with a call, the card stays up until the share begins, since the picker may not open for a while.
+- `CallDetector.swift` starts sharing the left half when a Zoom meeting window ("Zoom Meeting") or a Google Meet call tab ("Meet - abc-defg-hij") is on screen, or when Chrome's "Choose what to share with meet.google.com" picker opens, so the Portion window is already in the picker. It stops sharing it started a few seconds after the call window, the sharing indicator and microphone use are all gone. Browsers only report the active tab's title, so microphone use (read through Core Audio's `kAudioDevicePropertyDeviceIsRunningSomewhere`, never the audio itself) is what keeps a call alive while the Meet tab is in the background. Choosing Stop Sharing keeps it off for the rest of that call. Each call is told apart by its Meet code.
 - If the capture stream stops (sleep, lock, display changes), Portion restarts it into the same window, so the call keeps sharing.
 
 ## Project layout
@@ -66,6 +67,7 @@ Sources/Portion/
   MirrorWindow.swift             The "Portion" window that you share in calls
   IntroCard.swift                Branded card shown in the Portion window when sharing starts
   ShareDetector.swift            Notices when Zoom / Meet start sharing, to dismiss the card
+  CallDetector.swift             Starts and stops sharing with Zoom / Meet calls
   BorderOverlay.swift            Gradient outline around the shared area
   Brand.swift                    Brand colors and the Rubik font (matches christopherrose.com)
 Resources/Info.plist             Bundle metadata (LSUIElement = menu bar only)

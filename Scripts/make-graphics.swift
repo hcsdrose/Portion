@@ -292,14 +292,14 @@ struct MakeGraphics {
         }
     }
 
-    /// Three steps: pick a half, pick the Portion window, click Share.
+    /// Three steps: join the call (Portion starts on its own), pick the Portion window, click Share.
     static func steps() {
         render("three-steps", width: 1200, height: 470) {
             canvas(1200, 470)
             let panelW: CGFloat = 352, gap: CGFloat = 22, top: CGFloat = 40
-            let titles = ["Pick a half", "Choose “Portion”", "Click Share"]
-            let notes = ["Click the Portion icon in your menu bar.",
-                         "In Zoom or Meet, pick the Portion window.",
+            let titles = ["Join your call", "Choose “Portion”", "Click Share"]
+            let notes = ["Portion starts sharing your left half on its own.",
+                         "Click Share in Zoom or Present in Meet, then pick Portion.",
                          "Done! The card goes away and your half is live."]
             for i in 0..<3 {
                 let p = NSRect(x: 40 + CGFloat(i) * (panelW + gap), y: top, width: panelW, height: 390)
@@ -310,7 +310,7 @@ struct MakeGraphics {
                 text(titles[i], at: NSPoint(x: p.minX + 80, y: p.minY + 34), size: 24, weight: 800)
                 let art = NSRect(x: p.minX + 24, y: p.minY + 84, width: p.width - 48, height: 210)
                 switch i {
-                case 0: stepMenu(art)
+                case 0: stepCall(art)
                 case 1: stepPicker(art)
                 default: stepShare(art)
                 }
@@ -319,27 +319,28 @@ struct MakeGraphics {
         }
     }
 
-    static func stepMenu(_ r: NSRect) {
-        // Menu bar strip.
-        let bar = NSRect(x: r.minX, y: r.minY, width: r.width, height: 34)
-        fill(bar, NSColor(hex: 0xE6E8EF), radius: 8)
-        for (i, s) in ["wifi", "battery.75percent", "clock"].enumerated() {
-            symbol(s, in: NSRect(x: bar.maxX - 34 - CGFloat(i) * 30, y: bar.minY + 9, width: 22, height: 16), color: inkSoft)
+    /// A call window, with Portion's notice that it has started on its own.
+    static func stepCall(_ r: NSRect) {
+        fill(r, callBG, radius: 12)
+        for (i, c) in [0xFF5F57, 0xFEBC2E, 0x28C840].enumerated() {
+            fill(NSRect(x: r.minX + 14 + CGFloat(i) * 18, y: r.minY + 14, width: 10, height: 10), NSColor(hex: UInt32(c)), radius: 5)
         }
-        let iconBox = NSRect(x: bar.minX + 120, y: bar.minY + 3, width: 36, height: 28)
-        fill(iconBox, Brand.purple.withAlphaComponent(0.15), radius: 6)
-        symbol("rectangle.split.2x1", in: iconBox.insetBy(dx: 7, dy: 6), color: ink)
-        // Dropdown.
-        let menu = NSRect(x: iconBox.minX - 10, y: bar.maxY + 8, width: 190, height: 140)
-        shadowed(blur: 14, y: 4, alpha: 0.16) { fill(menu, .white, radius: 10) }
-        let rows = [("rectangle.lefthalf.filled", "Share Left Half"), ("rectangle.righthalf.filled", "Share Right Half"), ("", "Stop Sharing")]
-        for (i, row) in rows.enumerated() {
-            let rr = NSRect(x: menu.minX + 6, y: menu.minY + 10 + CGFloat(i) * 40, width: menu.width - 12, height: 34)
-            if i == 0 { gradient(rr, radius: rr.height / 2) }
-            let color: NSColor = i == 0 ? .white : (i == 2 ? inkSoft : ink)
-            if !row.0.isEmpty { symbol(row.0, in: NSRect(x: rr.minX + 10, y: rr.minY + 9, width: 22, height: 16), color: color) }
-            text(row.1, at: NSPoint(x: rr.minX + 40, y: rr.minY + 7), size: 15, weight: 500, color: color)
+        // Participant tiles.
+        let tileW = (r.width - 16 * 3) / 2, tileH: CGFloat = 62
+        for i in 0..<2 {
+            let t = NSRect(x: r.minX + 16 + CGFloat(i) * (tileW + 16), y: r.minY + 38, width: tileW, height: tileH)
+            fill(t, NSColor(hex: 0x3C4043), radius: 8)
+            symbol("person.fill", in: t.insetBy(dx: tileW / 2 - 16, dy: 14), color: NSColor(hex: 0x9AA0A6))
         }
+        // Portion's status, as if from the menu bar.
+        let note = NSRect(x: r.minX + 16, y: r.minY + 116, width: r.width - 32, height: 76)
+        gradient(note, radius: 12)
+        let g = NSRect(x: note.minX + 16, y: note.midY - 13, width: 40, height: 26)
+        fill(g, NSColor.white.withAlphaComponent(0.3), radius: 4)
+        fill(NSRect(x: g.minX, y: g.minY, width: g.width / 2, height: g.height), .white, radius: 4)
+        stroke(g, .white, width: 2, radius: 4)
+        text("Portion is sharing", at: NSPoint(x: g.maxX + 14, y: note.minY + 16), size: 17, weight: 700, color: .white)
+        text("your left half", at: NSPoint(x: g.maxX + 14, y: note.minY + 40), size: 15, color: NSColor.white.withAlphaComponent(0.85))
     }
 
     static func stepPicker(_ r: NSRect) {
@@ -408,16 +409,16 @@ struct MakeGraphics {
 
     /// The menu bar menu.
     static func menu() {
-        render("menu", width: 560, height: 470) {
-            canvas(560, 470)
+        render("menu", width: 560, height: 395) {
+            canvas(560, 395)
             menuScene()
         }
     }
 
-    /// The menu without its canvas, laid out in a 560 × 470 space (menu at 60, 40, 440 × 390).
+    /// The menu without its canvas, laid out in a 560 × 395 space (menu at 60, 40, 440 × 315).
     static func menuScene() {
         do {
-            let m = NSRect(x: 60, y: 40, width: 440, height: 390)
+            let m = NSRect(x: 60, y: 40, width: 440, height: 315)
             shadowed(blur: 20, y: 6, alpha: 0.16) { fill(m, .white, radius: 12) }
             stroke(m, line, width: 1, radius: 12)
             var y = m.minY + 12
@@ -479,9 +480,9 @@ extension MakeGraphics {
             placed(at: NSPoint(x: (shotW - 500 * 1.5) / 2, y: 300), scale: 1.5) { privacyScene() }
         }
 
-        screenshot("04-menu-bar", eyebrow: "ONE CLICK",
+        screenshot("04-menu-bar", eyebrow: "AUTOMATIC",
                    headline: [("Lives in your ", false), ("menu bar", true), (".", false)],
-                   subline: "No windows, no clutter. Pick a half, switch sides or stop, right from the menu bar.") {
+                   subline: "Starts on its own when your Zoom or Meet call begins. Switch sides or stop from the menu bar.") {
             menuBarScene()
         }
 

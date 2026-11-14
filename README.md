@@ -33,14 +33,14 @@ Zoom and Chrome need the same permission to share windows. If you've shared your
 ## Share half your screen
 
 <p align="center">
-  <img src="docs/images/three-steps.png" alt="Step 1: choose Share Left Half from the Portion menu. Step 2: choose the Portion window in Zoom or Meet. Step 3: click Share." width="800">
+  <img src="docs/images/three-steps.png" alt="Step 1: join your call, and Portion starts sharing your left half on its own. Step 2: choose the Portion window in Zoom or Meet. Step 3: click Share." width="800">
 </p>
 
 **1. Join your call.** When a Zoom meeting or Google Meet call opens, Portion starts sharing the **left half** of your screen on its own. A purple-and-pink outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
 
 Want the right half, or using another call app? Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half** yourself.
 
-**2. Share the "Portion" window in your call.**
+**2. Share the "Portion" window in your call.** Click Share as usual. Portion is already in the list.
 
 | App | What to click |
 | --- | --- |
@@ -48,7 +48,7 @@ Want the right half, or using another call app? Click the Portion icon in the me
 | **Zoom** | **Share Screen** → **Portion** → **Share** |
 | **Other apps** | Choose to share a *window* (not your entire screen) and pick **Portion** |
 
-**3. That's it.** Anything you put on that half of your screen is now visible in the call.
+**3. That's it.** Anything you put on that half of your screen is now visible in the call. When the call ends, Portion stops on its own.
 
 ### Look for the Portion card
 
