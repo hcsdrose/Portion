@@ -146,7 +146,7 @@ WHY PORTION NEEDS SCREEN RECORDING
 Portion copies half of the screen into its own window, called "Portion", which the call app then shares. Nothing is recorded, saved or sent anywhere. Portion has no network access.
 
 ABOUT THE PORTION WINDOW
-The "Portion" window is deliberately placed almost entirely off-screen, so the user doesn't see a second copy of their screen. It is still visible to the call app's window picker.
+The "Portion" window is deliberately placed almost entirely off-screen, so the user doesn't see a second copy of their screen. It is still visible to the call app's window picker. Zoom only captures the on-screen part of a window, so during a Zoom call the window instead sits exactly over the shared half, behind all other windows, and ignores clicks. It shows an exact copy of what's there, so it's still invisible to the user.
 
 ABOUT READING WINDOW TITLES
 While running, Portion checks the titles of on-screen windows twice per second. It looks only for a Zoom meeting window ("Zoom Meeting"), a Google Meet call tab ("Meet - abc-defg-hij") or Chrome's Meet share picker, so it can start and stop sharing with the call, and for the indicator Zoom or Chrome shows once sharing starts ("... is sharing a window"), so it can hide its card. Titles are never stored or sent anywhere.

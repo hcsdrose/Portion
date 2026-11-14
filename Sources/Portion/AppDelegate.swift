@@ -114,6 +114,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        mirror.sendToBack()
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         border.hide()
         mirror.hide()
@@ -298,7 +302,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let cocoaRect = NSRect(x: frame.minX + xOffset, y: frame.minY, width: width, height: frame.height)
 
         if showBorder { border.show(around: cocoaRect) } else { border.hide() }
-        mirror.show(regionSize: cocoaRect.size, sharedRegion: cocoaRect, on: screen)
+        mirror.show(regionSize: cocoaRect.size, sharedRegion: cocoaRect, on: screen,
+                    behindWindows: callDetector.isZoomCall)
 
         try await capture.start(displayID: screen.displayID, sourceRect: sourceRect,
                                 scale: screen.backingScaleFactor)
@@ -327,7 +332,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .callStarted, .sharePickerOpened:
             // A new call, or the user reaching for Share, overrides an earlier Stop Sharing.
             autoSuppressed = false
-            autoStart()
+            if let side = activeSide {
+                // Already sharing (started by hand): move the window where this call app
+                // can capture it.
+                startSharing(side)
+            } else {
+                autoStart()
+            }
         case .callEnded:
             autoSuppressed = false
             if autoStarted {
@@ -439,7 +450,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @discardableResult
     private func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         NSApp.activate(ignoringOtherApps: true)
-        return alert.runModal()
+        mirror.sendToBack()
+        let response = alert.runModal()
+        mirror.sendToBack()
+        return response
     }
 }
 

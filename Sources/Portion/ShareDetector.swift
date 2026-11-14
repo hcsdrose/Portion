@@ -10,11 +10,11 @@ import Foundation
 @MainActor
 final class ShareDetector {
     /// Title fragments of windows that appear only once a share has started.
-    private static let sharingIndicators: [(owner: String?, title: String)] = [
+    private static let sharingIndicators: [(zoomOnly: Bool, title: String)] = [
         // Chrome / Edge / Brave bar: "meet.google.com is sharing a window."
-        (nil, " is sharing a"),
+        (false, " is sharing a"),
         // Zoom's floating toolbar while sharing.
-        ("Zoom", "zoom share toolbar window"),
+        (true, "zoom share toolbar window"),
     ]
 
     private var timer: Timer?
@@ -51,9 +51,8 @@ final class ShareDetector {
         for info in list {
             guard let title = info[kCGWindowName as String] as? String, !title.isEmpty,
                   let id = info[kCGWindowNumber as String] as? CGWindowID else { continue }
-            let owner = info[kCGWindowOwnerName as String] as? String
             let matches = sharingIndicators.contains { indicator in
-                (indicator.owner == nil || indicator.owner == owner) && title.contains(indicator.title)
+                title.contains(indicator.title) && (!indicator.zoomOnly || isZoomWindow(info))
             }
             if matches { found.insert(id) }
         }

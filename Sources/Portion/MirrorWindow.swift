@@ -3,9 +3,14 @@ import QuartzCore
 
 /// The window that Zoom / Google Meet share. It shows a live copy of the selected region.
 ///
-/// It is parked just past the bottom-right corner of the desktop, overlapping it by a single
-/// pixel: effectively invisible to you, still shareable. (A window that is *fully* off-screen
-/// can't be snapshotted by ScreenCaptureKit, so share pickers would show it blank.)
+/// Where it goes depends on the call app (see `show`):
+/// - Normally it is parked just past the bottom-right corner of the desktop, overlapping it by
+///   a single pixel: invisible to you, still shareable. (A window that is *fully* off-screen
+///   can't be snapshotted by ScreenCaptureKit, so share pickers would show it blank.)
+/// - Zoom only captures the on-screen part of a window, so it would get that single pixel.
+///   For Zoom the window sits exactly over the shared half instead, behind every other window.
+///   Portion's capture leaves out its own windows and the window ignores clicks, so where the
+///   desktop shows through it shows an exact copy of the desktop: still invisible to you.
 @MainActor
 final class MirrorWindowController {
     nonisolated static let windowTitle = "Portion"
@@ -28,17 +33,27 @@ final class MirrorWindowController {
 
     var isVisible: Bool { window?.isVisible ?? false }
 
-    func show(regionSize: NSSize, sharedRegion: NSRect, on screen: NSScreen) {
+    /// Whether the window is on-screen behind other windows (for Zoom) rather than off-screen.
+    private var behindWindows = false
+
+    func show(regionSize: NSSize, sharedRegion: NSRect, on screen: NSScreen, behindWindows: Bool) {
         let window = self.window ?? makeWindow()
         self.window = window
         // Only on a fresh start; switching halves or reconnecting keeps the live picture.
         let isFreshStart = !window.isVisible
 
-        // Hang it off the bottom-right corner of the rightmost display, so only its
-        // top-left pixel is on-screen.
-        let corner = (NSScreen.screens.max { $0.frame.maxX < $1.frame.maxX } ?? screen).frame
-        let frame = NSRect(x: corner.maxX - 1, y: corner.minY - regionSize.height + 1,
+        self.behindWindows = behindWindows
+
+        let frame: NSRect
+        if behindWindows {
+            frame = sharedRegion
+        } else {
+            // Hang it off the bottom-right corner of the rightmost display, so only its
+            // top-left pixel is on-screen.
+            let corner = (NSScreen.screens.max { $0.frame.maxX < $1.frame.maxX } ?? screen).frame
+            frame = NSRect(x: corner.maxX - 1, y: corner.minY - regionSize.height + 1,
                            width: regionSize.width, height: regionSize.height)
+        }
         window.level = .normal
 
         window.setFrame(frame, display: true)
@@ -53,7 +68,18 @@ final class MirrorWindowController {
             card.layout(in: window.contentView?.bounds ?? .zero, scale: screen.backingScaleFactor)
         }
 
-        window.orderFrontRegardless()
+        if behindWindows {
+            window.orderBack(nil)
+        } else {
+            window.orderFrontRegardless()
+        }
+    }
+
+    /// Activating Portion (e.g. to show an alert) raises its windows. Behind-windows placement
+    /// must never cover the user's apps, so push it back.
+    func sendToBack() {
+        guard behindWindows, let window, window.isVisible else { return }
+        window.orderBack(nil)
     }
 
     func display(_ surface: IOSurface) {

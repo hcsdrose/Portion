@@ -1,9 +1,17 @@
+import AppKit
 import CoreAudio
 import CoreGraphics
 import Foundation
 import os
 
 let callLog = Logger(subsystem: "com.christopherrose.Portion", category: "calls")
+
+/// Whether a window from `CGWindowListCopyWindowInfo` belongs to Zoom. Zoom's process name has
+/// changed over the years ("zoom.us", "Zoom"), so this goes by its bundle identifier.
+func isZoomWindow(_ info: [String: Any]) -> Bool {
+    guard let pid = info[kCGWindowOwnerPID as String] as? pid_t else { return false }
+    return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "us.zoom.xos"
+}
 
 /// Notices when a Zoom meeting or Google Meet call is open, so Portion can start sharing
 /// before the user opens the call app's share picker.
@@ -23,6 +31,7 @@ final class CallDetector {
 
     var onEvent: ((Event) -> Void)?
     var isInCall: Bool { currentCall != nil }
+    var isZoomCall: Bool { currentCall == "zoom" }
 
     /// A call counts as over once its window, the call app's sharing indicator and microphone
     /// use have all been gone this long.
@@ -136,10 +145,9 @@ final class CallDetector {
         var pickerOpen = false
         for info in list {
             guard let title = info[kCGWindowName as String] as? String, !title.isEmpty else { continue }
-            let owner = info[kCGWindowOwnerName as String] as? String ?? ""
             if title.hasPrefix(meetPickerTitle) {
                 pickerOpen = true
-            } else if owner.hasPrefix("zoom"), title.hasPrefix("Zoom Meeting") || title.hasPrefix("Zoom Webinar") {
+            } else if title.hasPrefix("Zoom Meeting") || title.hasPrefix("Zoom Webinar"), isZoomWindow(info) {
                 call = call ?? "zoom"
             } else if let match = meetTitle.firstMatch(in: title, range: NSRange(title.startIndex..., in: title)),
                       let code = Range(match.range(at: 1), in: title) {
