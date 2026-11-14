@@ -36,11 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         set { defaults.set(newValue, forKey: "showBorder") }
     }
 
-    private var placement: MirrorPlacement {
-        get { MirrorPlacement(rawValue: defaults.string(forKey: "placement") ?? "") ?? .offscreen }
-        set { defaults.set(newValue.rawValue, forKey: "placement") }
-    }
-
     /// Display chosen in the menu; nil means "the screen with the menu bar".
     private var preferredDisplayID: CGDirectDisplayID? {
         get { (defaults.object(forKey: "displayID") as? NSNumber)?.uint32Value }
@@ -108,10 +103,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    func applicationDidBecomeActive(_ notification: Notification) {
-        mirror.sendToBack()
-    }
-
     func applicationWillTerminate(_ notification: Notification) {
         border.hide()
         mirror.hide()
@@ -162,19 +153,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         borderItem.target = self
         borderItem.state = showBorder ? .on : .off
         menu.addItem(borderItem)
-
-        let placementItem = NSMenuItem(title: "Portion Window Placement", action: nil, keyEquivalent: "")
-        let placementMenu = NSMenu()
-        for (option, title) in [(MirrorPlacement.offscreen, "Hidden Off-Screen (Recommended)"),
-                                (MirrorPlacement.behindWindows, "On Other Half, Behind Windows")] {
-            let item = NSMenuItem(title: title, action: #selector(choosePlacement(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = option.rawValue
-            item.state = placement == option ? .on : .off
-            placementMenu.addItem(item)
-        }
-        placementItem.submenu = placementMenu
-        menu.addItem(placementItem)
 
         menu.addItem(.separator())
 
@@ -228,12 +206,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showBorder.toggle()
         // The outline is never captured, so there's no need to touch the stream.
         if showBorder, let region = activeRegion { border.show(around: region) } else { border.hide() }
-    }
-
-    @objc private func choosePlacement(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let value = MirrorPlacement(rawValue: raw) else { return }
-        placement = value
-        if let side = activeSide { startSharing(side) }
     }
 
     @objc private func toggleLaunchAtLogin() {
@@ -310,7 +282,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let cocoaRect = NSRect(x: frame.minX + xOffset, y: frame.minY, width: width, height: frame.height)
 
         if showBorder { border.show(around: cocoaRect) } else { border.hide() }
-        mirror.show(regionSize: cocoaRect.size, sharedRegion: cocoaRect, on: screen, placement: placement)
+        mirror.show(regionSize: cocoaRect.size, sharedRegion: cocoaRect, on: screen)
 
         try await capture.start(displayID: screen.displayID, sourceRect: sourceRect,
                                 scale: screen.backingScaleFactor)
@@ -418,10 +390,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @discardableResult
     private func runModal(_ alert: NSAlert) -> NSApplication.ModalResponse {
         NSApp.activate(ignoringOtherApps: true)
-        mirror.sendToBack()
-        let response = alert.runModal()
-        mirror.sendToBack()
-        return response
+        return alert.runModal()
     }
 }
 

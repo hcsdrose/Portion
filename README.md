@@ -80,7 +80,6 @@ Stop presenting in your call as usual, then choose **Stop Sharing** in the Porti
 | **Stop Sharing** | Stops Portion. |
 | **Display** | Appears only if you have more than one monitor. Picks which screen to split. |
 | **Outline Shared Area** | Shows or hides the outline around the shared half. |
-| **Portion Window Placement** | Try **On Other Half, Behind Windows** if Portion is missing from your call app's list (see below). |
 | **Launch at Login** | Starts Portion automatically when you log in. |
 
 ---
@@ -91,7 +90,7 @@ Stop presenting in your call as usual, then choose **Stop Sharing** in the Porti
 Quit Portion and open it again. If that doesn't help, select **Portion** in **System Settings → Privacy & Security → Screen & System Audio Recording**, remove it with the **–** button, then open Portion and allow it again.
 
 **I don't see Portion in Zoom's or Meet's list of windows.**
-Make sure you chose **Share Left Half** or **Share Right Half** *first*. The Portion window only exists while Portion is sharing. If the list was already open, close it and open it again. If it's still missing, open the Portion menu → **Portion Window Placement** → **On Other Half, Behind Windows**.
+Make sure you chose **Share Left Half** or **Share Right Half** *first*. The Portion window only exists while Portion is sharing. If the list was already open, close it and open it again.
 
 **People in the call see the Portion card instead of my screen.**
 The card goes away as soon as Meet or Zoom starts sharing. In other apps, it can take up to a minute to disappear on its own.
