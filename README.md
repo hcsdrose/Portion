@@ -36,7 +36,9 @@ Zoom and Chrome need the same permission to share windows. If you've shared your
   <img src="docs/images/three-steps.png" alt="Step 1: choose Share Left Half from the Portion menu. Step 2: choose the Portion window in Zoom or Meet. Step 3: click Share." width="800">
 </p>
 
-**1. Pick a half.** Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half**. A purple-and-pink outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
+**1. Join your call.** When a Zoom meeting or Google Meet call opens, Portion starts sharing the **left half** of your screen on its own. A purple-and-pink outline appears around that half, so you always know what people can see. The outline is only on your screen. People in the call don't see it.
+
+Want the right half, or using another call app? Click the Portion icon in the menu bar and choose **Share Left Half** or **Share Right Half** yourself.
 
 **2. Share the "Portion" window in your call.**
 
@@ -64,7 +66,7 @@ Pick the other half from the Portion menu at any time. The call keeps going, and
 
 ### Stop sharing
 
-Stop presenting in your call as usual, then choose **Stop Sharing** in the Portion menu.
+Stop presenting in your call as usual. When you leave or close the Zoom meeting or Meet call, Portion stops on its own a few seconds later. To stop it sooner, choose **Stop Sharing** in the Portion menu. It then stays off until your next call.
 
 ---
 
@@ -90,7 +92,7 @@ Stop presenting in your call as usual, then choose **Stop Sharing** in the Porti
 Quit Portion and open it again. If that doesn't help, select **Portion** in **System Settings → Privacy & Security → Screen & System Audio Recording**, remove it with the **–** button, then open Portion and allow it again.
 
 **I don't see Portion in Zoom's or Meet's list of windows.**
-Make sure you chose **Share Left Half** or **Share Right Half** *first*. The Portion window only exists while Portion is sharing. If the list was already open, close it and open it again.
+The Portion window only exists while Portion is sharing. Portion starts on its own for Zoom meetings and Google Meet calls. For other apps, choose **Share Left Half** or **Share Right Half** *first*. If the list was already open, close it and open it again.
 
 **People in the call see the Portion card instead of my screen.**
 The card goes away as soon as Meet or Zoom starts sharing. In other apps, it can take up to a minute to disappear on its own.

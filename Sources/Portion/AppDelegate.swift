@@ -14,6 +14,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let capture = RegionCapture()
     private let mirror = MirrorWindowController()
     private let border = BorderOverlay()
+    private let callDetector = CallDetector()
+
+    /// The side shared automatically when a Zoom or Meet call begins.
+    private static let autoSide: Side = .left
+    /// Sharing was started by a call beginning, so it stops when the call ends.
+    private var autoStarted = false
+    /// The user stopped sharing during this call, so don't start again until it ends.
+    private var autoSuppressed = false
 
     /// The half being shared. Stays set while reconnecting after an interruption.
     private var activeSide: Side?
@@ -58,6 +66,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.handleStreamError(error)
         }
 
+        callDetector.onEvent = { [weak self] event in self?.callEvent(event) }
+        callDetector.start()
+
         NotificationCenter.default.addObserver(
             self, selector: #selector(screensChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil
@@ -91,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             alert.informativeText = """
             Portion lives in your menu bar, at the top right of your screen. Look for this icon: ◫
 
-            Click it and choose Share Left Half or Share Right Half. Then, in Zoom or Google Meet, share the window named “Portion”. People in your call see only that half of your screen.
+            When you join a Zoom or Google Meet call, Portion starts sharing the left half of your screen on its own. Just share the window named “Portion” in your call. People in your call see only that half of your screen. To share the right half instead, or to use another call app, click the icon and choose a half.
 
             Next, macOS will ask for permission to record your screen. Portion needs it to copy half of your screen into your call. Nothing is saved or sent anywhere.
             """
@@ -189,10 +200,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func shareSide(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let side = Side(rawValue: raw) else { return }
+        if activeSide == nil && pendingStarts == 0 {
+            autoStarted = false
+            mirror.introCardTimesOut = true
+        }
         startSharing(side)
     }
 
     @objc private func stopSharing() {
+        userStoppedSharing()
         enqueue { [weak self] in await self?.endSharing() }
     }
 
@@ -302,12 +318,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         await capture.stop()
     }
 
+    // MARK: Automatic sharing
+
+    /// Starts sharing the left half as soon as a Zoom or Meet call is on screen, so the
+    /// "Portion" window is already in the call app's share picker. Stops when the call ends.
+    private func callEvent(_ event: CallDetector.Event) {
+        switch event {
+        case .callStarted, .sharePickerOpened:
+            // A new call, or the user reaching for Share, overrides an earlier Stop Sharing.
+            autoSuppressed = false
+            autoStart()
+        case .callEnded:
+            autoSuppressed = false
+            if autoStarted {
+                autoStarted = false
+                enqueue { [weak self] in await self?.endSharing() }
+            }
+        }
+    }
+
+    private func autoStart() {
+        guard activeSide == nil, pendingStarts == 0, !autoSuppressed,
+              CGPreflightScreenCaptureAccess() else { return }
+        autoStarted = true
+        mirror.introCardTimesOut = false
+        startSharing(Self.autoSide)
+    }
+
+    private func userStoppedSharing() {
+        autoStarted = false
+        if callDetector.isInCall { autoSuppressed = true }
+    }
+
     // MARK: Recovery
 
     private func handleStreamError(_ error: Error) {
         guard activeSide != nil else { return }
         // The user ended capture from the system's screen-recording indicator: respect that.
         if (error as? SCStreamError)?.code == .userStopped {
+            userStoppedSharing()
             enqueue { [weak self] in await self?.endSharing() }
             return
         }

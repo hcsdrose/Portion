@@ -21,6 +21,11 @@ final class MirrorWindowController {
     /// or after this long if that can't be detected (e.g. an app ShareDetector doesn't know).
     static let introCardTimeout: TimeInterval = 60
 
+    /// When Portion starts on its own as a call begins, the user may not open the share picker
+    /// for a while, so the card waits for the share instead of timing out. Zoom and Meet are
+    /// the apps that trigger this, and ShareDetector recognises both.
+    var introCardTimesOut = true
+
     var isVisible: Bool { window?.isVisible ?? false }
 
     func show(regionSize: NSSize, sharedRegion: NSRect, on screen: NSScreen) {
@@ -76,8 +81,10 @@ final class MirrorWindowController {
         card.isHidden = false
         CATransaction.commit()
 
-        cardTimer = Timer.scheduledTimer(withTimeInterval: Self.introCardTimeout, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.fadeOutCard() }
+        if introCardTimesOut {
+            cardTimer = Timer.scheduledTimer(withTimeInterval: Self.introCardTimeout, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.fadeOutCard() }
+            }
         }
         shareDetector.start { [weak self] in self?.fadeOutCard() }
     }

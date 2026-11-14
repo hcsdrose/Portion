@@ -41,6 +41,9 @@ final class ShareDetector {
         timer = nil
     }
 
+    /// Whether a known call app is sharing something right now.
+    static func isSharing() -> Bool { !indicatorWindows().isEmpty }
+
     private static func indicatorWindows() -> Set<CGWindowID> {
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
         guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
