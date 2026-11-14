@@ -445,7 +445,6 @@ struct MakeGraphics {
             row("Display", chevron: true)
             row("Outline Shared Area", check: true)
             row("Portion Window Placement", chevron: true)
-            row("How to Share in Zoom / Meet…")
             separator()
             row("Launch at Login", check: true)
             row("Quit Portion")

@@ -176,9 +176,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         placementItem.submenu = placementMenu
         menu.addItem(placementItem)
 
-        let help = NSMenuItem(title: "How to Share in Zoom / Meet…", action: #selector(showHelp), keyEquivalent: "")
-        help.target = self
-        menu.addItem(help)
         menu.addItem(.separator())
 
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
@@ -250,17 +247,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             presentAlert(title: "Couldn’t change Launch at Login",
                          message: "\(error.localizedDescription)\n\nMake sure Portion is in your Applications folder.")
         }
-    }
-
-    @objc private func showHelp() {
-        presentAlert(title: "Sharing half your screen", message: """
-        1. Choose “Share Left Half” or “Share Right Half” from the Portion menu bar icon.
-        2. In Zoom: click Share Screen and pick the window named “Portion”.
-           In Google Meet (Chrome): click Present → A window, and pick “Portion”.
-        3. Everyone in the call now sees only that half of your screen. Switch halves any time from the menu; the call keeps sharing the same window.
-
-        Tip: if “Portion” doesn’t appear in the picker, set Portion Window Placement to “On Other Half, Behind Windows” and try again.
-        """)
     }
 
     @objc private func screensChanged() {

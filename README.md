@@ -81,7 +81,6 @@ Stop presenting in your call as usual, then choose **Stop Sharing** in the Porti
 | **Display** | Appears only if you have more than one monitor. Picks which screen to split. |
 | **Outline Shared Area** | Shows or hides the outline around the shared half. |
 | **Portion Window Placement** | Try **On Other Half, Behind Windows** if Portion is missing from your call app's list (see below). |
-| **How to Share in Zoom / Meet…** | A quick reminder of the steps. |
 | **Launch at Login** | Starts Portion automatically when you log in. |
 
 ---
